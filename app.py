@@ -19,13 +19,15 @@ st.markdown("""
             font-size: 2.5em;
             font-weight: 600;
             margin-bottom: 0.2em;
+            text-align: center;
         }
         .subtitle {
             color: #4a6fa5;
             font-size: 1.1em;
             margin-bottom: 2em;
+            text-align: center;
         }
-        .css-1emrehy.edgvbvh3, .stButton>button {
+        .stButton>button {
             background-color: #003366;
             color: white;
             font-weight: bold;
@@ -67,7 +69,8 @@ def process_file(df):
 
     results = []
     for _, row in df.iterrows():
-        desc = str(row['ΠΕΡΙΓΡΑΦΗ']).upper()
+        original_desc = str(row['ΠΕΡΙΓΡΑΦΗ'])
+        desc = original_desc.upper()
         amount = abs(row['ΠΟΣΟ'])
         plots = find_all_plots(desc)
 
@@ -88,6 +91,7 @@ def process_file(df):
             "Type": "",
             "Supplier": "",
             "Description": desc,
+            "Original Description": original_desc,
             "In": amount if is_income else "",
             "Out": -amount if not is_income else "",
             "Total": amount if is_income else -amount,
