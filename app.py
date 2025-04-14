@@ -14,19 +14,6 @@ st.markdown("""
         .stApp {
             background-color: #f7f9fc;
         }
-        .title {
-            color: #003366;
-            font-size: 2.5em;
-            font-weight: 600;
-            margin-bottom: 0.2em;
-            text-align: center;
-        }
-        .subtitle {
-            color: #4a6fa5;
-            font-size: 1.1em;
-            margin-bottom: 2em;
-            text-align: center;
-        }
         .decor-box {
             background-color: #e6f0ff;
             border-left: 6px solid #003366;
@@ -62,13 +49,9 @@ st.markdown("""
 # --- LOGO ---
 st.markdown("""
     <div class='logo'>
-        <img src='https://raw.githubusercontent.com/Daniel43450/aiolos-excel/main/logo.png' alt='Aiolos Logo'>
+        <img src='https://raw.githubusercontent.com/Daniel43450/aiolos-excel-app/main/Capture.PNG' alt='Aiolos Logo'>
     </div>
 """, unsafe_allow_html=True)
-
-# --- HEADER ---
-st.markdown("<div class='title'>Aiolos</div>", unsafe_allow_html=True)
-st.markdown("<div class='subtitle'>Excel Classification Tool</div>", unsafe_allow_html=True)
 
 # --- Decorative Section ---
 st.markdown("""
@@ -103,7 +86,8 @@ def process_file(df):
 
     results = []
     for _, row in df.iterrows():
-        desc = str(row['ΠΕΡΙΓΡΑΦΗ']).upper()
+        original_desc = str(row['ΠΕΡΙΓΡΑΦΗ'])
+        desc = original_desc.upper()
         amount = abs(row['ΠΟΣΟ'])
         plots = find_all_plots(desc)
 
@@ -124,6 +108,7 @@ def process_file(df):
             "Type": "",
             "Supplier": "",
             "Description": desc,
+            "Original Description": original_desc,
             "In": amount if is_income else "",
             "Out": -amount if not is_income else "",
             "Total": amount if is_income else -amount,
