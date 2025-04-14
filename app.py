@@ -25,6 +25,15 @@ st.markdown("""
             font-size: 1.1em;
             margin-bottom: 2em;
         }
+        .css-1emrehy.edgvbvh3, .stButton>button {
+            background-color: #003366;
+            color: white;
+            font-weight: bold;
+        }
+        .stButton>button:hover {
+            background-color: #004080;
+            color: white;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -69,17 +78,19 @@ def process_file(df):
         else:
             plot_val = "All Plots"
 
+        is_income = row['ΠΟΣΟ'] > 0
+
         entry = {
             "Date": row['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ'],
-            "Income/outcome": "Income" if row['ΠΟΣΟ'] > 0 else "Outcome",
+            "Income/outcome": "Income" if is_income else "Outcome",
             "Plot": plot_val,
             "Expenses Type": "Soft Cost",
             "Type": "",
             "Supplier": "",
             "Description": desc,
-            "In": amount if row['ΠΟΣΟ'] > 0 else "",
-            "Out": amount if row['ΠΟΣΟ'] < 0 else "",
-            "Total": amount,
+            "In": amount if is_income else "",
+            "Out": -amount if not is_income else "",
+            "Total": amount if is_income else -amount,
             "Progressive Ledger Balance": "",
             "Payment details": ""
         }
@@ -88,7 +99,7 @@ def process_file(df):
         if "COM POO" in desc:
             entry["Type"] = "Bank"
             entry["Supplier"] = "Bank"
-        if "ECOVIS" in desc and not any(word in desc for word in ["YAG", "TAG"]):
+        if any(term in desc for term in ["ACCOUNTING", "BOOKKEEP", "ECOVIS"]) and not any(word in desc for word in ["YAG", "TAG"]):
             entry["Type"] = "Accounting"
             entry["Supplier"] = "Ecovis"
         if "GAS" in desc:
@@ -115,8 +126,22 @@ def process_file(df):
         if any(word in desc for word in ["DINNER", "FOOD", "CAFE", "COFFEE", "LUNCH", "BREAKFAST"]):
             entry["Type"] = "General"
             entry["Supplier"] = "F&B"
+        if "CAR" in desc:
+            entry["Type"] = "Transportation"
+            entry["Supplier"] = "Car Rental"
+        if "OASA" in desc:
+            entry["Type"] = "Transportation"
+            entry["Supplier"] = "OASA (Metro)"
+        if "CALEN" in desc:
+            entry["Type"] = "Construction works"
+            entry["Supplier"] = "Calen"
+            entry["Expenses Type"] = "Hard Cost"
+        if "CRM" in desc:
+            entry["Type"] = "reWire"
+            entry["Supplier"] = "Marketing"
+            entry["Description"] = "CRM"
+            entry["Expenses Type"] = "Soft Cost"
 
-        # Expenses Type
         if "CONSTRUCTION" in desc or "HARD COST" in desc:
             entry["Expenses Type"] = "Hard Cost"
 
@@ -125,7 +150,7 @@ def process_file(df):
     return pd.DataFrame(results)
 
 # --- RUN ---
-if uploaded_file and st.button("Run Classification"):
+if uploaded_file:
     if uploaded_file.name.endswith(".csv"):
         raw_df = pd.read_csv(uploaded_file, encoding="ISO-8859-7")
     else:
@@ -142,5 +167,5 @@ if uploaded_file and st.button("Run Classification"):
         label="Download Processed File",
         data=to_download.getvalue(),
         file_name=f"aiolos_processed_{datetime.datetime.now().strftime('%Y%m%d')}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
