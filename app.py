@@ -116,59 +116,70 @@ def process_file(df):
             "Original Description": original_desc
         }
 
-        # --- Custom Rules (exact output formatting) ---
+        filled = False
+
         if "COM POO" in desc:
             entry["Type"] = "Bank"
             entry["Supplier"] = "Bank"
             entry["Description"] = "Bank fees"
+            filled = True
         if any(term in desc for term in ["ACCOUNTING", "BOOKKEEP", "ECOVIS"]) and not any(word in desc for word in ["YAG", "TAG"]):
             entry["Type"] = "Accounting"
             entry["Supplier"] = "Ecovis"
             entry["Description"] = "Accountant monthly fees"
+            filled = True
         if "GAS" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Transportation"
             entry["Description"] = "Gas station"
+            filled = True
         if "DRAKAKIS" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Drakakis Tours"
             entry["Description"] = "Car rent fees"
+            filled = True
         if "FLIGHT" in desc or "AEGEAN" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Transportation"
             entry["Description"] = "Flight"
+            filled = True
         if any(word in desc for word in ["DINNER", "FOOD", "CAFE", "COFFEE", "LUNCH", "BREAKFAST"]):
             entry["Type"] = "General"
             entry["Supplier"] = "F&B"
             entry["Description"] = "F&B"
+            filled = True
         if "GOOGLE" in desc:
             entry["Type"] = "Marketing"
             entry["Supplier"] = "Marketing"
             entry["Description"] = "Marketing Services fee"
+            filled = True
         if "CRM" in desc:
             entry["Type"] = "Marketing"
             entry["Supplier"] = "reWire"
             entry["Description"] = "CRM"
+            filled = True
         if "UBER" in desc or "TAXI" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Transportation"
             entry["Description"] = "Athens Taxi"
+            filled = True
         if "OPENAI" in desc:
             entry["Type"] = "General"
             entry["Supplier"] = "Office expenses"
             entry["Description"] = "Office expense"
+            filled = True
         if "TAG" in desc:
-            if "SUPERVISION" in desc:
-                entry["Type"] = "Architect"
-                entry["Supplier"] = "TAG ARCHITECTS"
+            entry["Type"] = "Architect"
+            entry["Supplier"] = "TAG ARCHITECTS"
+            if "SUP" in desc:
                 entry["Description"] = "Supervision"
             else:
-                entry["Type"] = "Architect"
-                entry["Supplier"] = "TAG ARCHITECTS"
                 entry["Description"] = "Planning"
+            filled = True
 
-        # Build Category Tag
-        entry["Category Tag"] = f"{entry['Type']} / {entry['Description']}"
+        # Highlight in yellow if not matched to a rule
+        if not filled:
+            entry["Description"] = f"🟨 {entry['Description']}"
 
         results.append(entry)
 
