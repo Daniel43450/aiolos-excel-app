@@ -86,8 +86,7 @@ def process_file(df):
 
     results = []
     for _, row in df.iterrows():
-        original_desc = str(row['ΠΕΡΙΓΡΑΦΗ'])
-        desc = original_desc.upper()
+        desc = str(row['ΠΕΡΙΓΡΑΦΗ']).upper()
         amount = abs(row['ΠΟΣΟ'])
         plots = find_all_plots(desc)
 
@@ -108,7 +107,6 @@ def process_file(df):
             "Type": "",
             "Supplier": "",
             "Description": desc,
-            "Original Description": original_desc,
             "In": amount if is_income else "",
             "Out": -amount if not is_income else "",
             "Total": amount if is_income else -amount,
@@ -178,9 +176,6 @@ if uploaded_file:
         raw_df = pd.read_excel(uploaded_file)
 
     result_df = process_file(raw_df)
-
-    st.success("✅ File processed successfully!")
-    st.dataframe(result_df.head(50))
 
     to_download = BytesIO()
     result_df.to_excel(to_download, index=False, engine='openpyxl')
