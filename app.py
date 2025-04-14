@@ -33,7 +33,7 @@ st.markdown("<div class='title'>Aiolos</div>", unsafe_allow_html=True)
 st.markdown("<div class='subtitle'>Excel Classification Tool</div>", unsafe_allow_html=True)
 
 # --- PROJECT SELECTION ---
-project_type = st.selectbox("Choose Excel Format:", ["AIOLOS ATHENS"], index=0)
+project_type = st.selectbox("Choose Excel Format:", ["DIAKOFTI"], index=0)
 
 # --- FILE UPLOAD ---
 uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "csv"])
@@ -88,7 +88,7 @@ def process_file(df):
         if "COM POO" in desc:
             entry["Type"] = "Bank"
             entry["Supplier"] = "Bank"
-        if "ECOVIS" in desc or amount == 496:
+        if "ECOVIS" in desc and not any(word in desc for word in ["YAG", "TAG"]):
             entry["Type"] = "Accounting"
             entry["Supplier"] = "Ecovis"
         if "GAS" in desc:
@@ -106,6 +106,15 @@ def process_file(df):
         if "UBER" in desc:
             entry["Type"] = "Transportation"
             entry["Supplier"] = "Uber"
+        if "AEGEAN" in desc:
+            entry["Type"] = "Travel"
+            entry["Supplier"] = "Aegean"
+        if "OPENAI" in desc:
+            entry["Type"] = "SaaS"
+            entry["Supplier"] = "OpenAI"
+        if any(word in desc for word in ["DINNER", "FOOD", "CAFE", "COFFEE", "LUNCH", "BREAKFAST"]):
+            entry["Type"] = "General"
+            entry["Supplier"] = "F&B"
 
         # Expenses Type
         if "CONSTRUCTION" in desc or "HARD COST" in desc:
