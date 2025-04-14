@@ -151,6 +151,39 @@ def process_file(df):
         df['Original Description'] = original_col
     return df
 
+        if "GOOGLE" in desc:
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "Marketing"
+            entry["Description"] = "Marketing Services fee"
+        if "CRM" in desc:
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "reWire"
+            entry["Description"] = "CRM"
+        if "UBER" in desc or "TAXI" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Athens Taxi"
+        if "OPENAI" in desc:
+            entry["Type"] = "General"
+            entry["Supplier"] = "Office expenses"
+            entry["Description"] = "Office expense"
+        if "TAG" in desc:
+            if "SUPERVISION" in desc:
+                entry["Type"] = "Architect"
+                entry["Supplier"] = "TAG ARCHITECTS"
+                entry["Description"] = "Supervision"
+            else:
+                entry["Type"] = "Architect"
+                entry["Supplier"] = "TAG ARCHITECTS"
+                entry["Description"] = "Planning"
+
+        df = pd.DataFrame(results)
+        # Move 'Original Description' column to the end (column M)
+        if 'Original Description' in df.columns:
+            original_col = df.pop('Original Description')
+            df['Original Description'] = original_col
+        return df
+
 # --- RUN ---
 if uploaded_file:
     if uploaded_file.name.endswith(".csv"):
