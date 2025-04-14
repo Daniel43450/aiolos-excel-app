@@ -126,9 +126,9 @@ def process_file(df):
             entry["Supplier"] = "Ecovis"
             entry["Description"] = "Accountant monthly fees"
         if "GAS" in desc:
-            entry["Type"] = "Fuel"
-            entry["Supplier"] = "Gas Station"
-            entry["Description"] = "Fuel"
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Gas station"
         if "DRAKAKIS" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Drakakis Tours"
@@ -141,11 +141,38 @@ def process_file(df):
             entry["Type"] = "General"
             entry["Supplier"] = "F&B"
             entry["Description"] = "F&B"
+        if "GOOGLE" in desc:
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "Marketing"
+            entry["Description"] = "Marketing Services fee"
+        if "CRM" in desc:
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "reWire"
+            entry["Description"] = "CRM"
+        if "UBER" in desc or "TAXI" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Athens Taxi"
+        if "OPENAI" in desc:
+            entry["Type"] = "General"
+            entry["Supplier"] = "Office expenses"
+            entry["Description"] = "Office expense"
+        if "TAG" in desc:
+            if "SUPERVISION" in desc:
+                entry["Type"] = "Architect"
+                entry["Supplier"] = "TAG ARCHITECTS"
+                entry["Description"] = "Supervision"
+            else:
+                entry["Type"] = "Architect"
+                entry["Supplier"] = "TAG ARCHITECTS"
+                entry["Description"] = "Planning"
+
+        # Build Category Tag
+        entry["Category Tag"] = f"{entry['Type']} / {entry['Description']}"
 
         results.append(entry)
 
     df = pd.DataFrame(results)
-    # Move 'Original Description' column to the end (column M)
     if 'Original Description' in df.columns:
         original_col = df.pop('Original Description')
         df['Original Description'] = original_col
