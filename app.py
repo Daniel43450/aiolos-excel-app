@@ -75,7 +75,7 @@ PLOTS = [
 def find_all_plots(description):
     found = []
     for plot in PLOTS:
-        if re.search(rf"(?<!\w){re.escape(plot)}(?!\w)", description):
+        if re.search(rf"(?<!\\w){re.escape(plot)}(?!\\w)", description):
             found.append(plot)
     return found
 
@@ -108,12 +108,12 @@ def process_file(df):
             "Type": "",
             "Supplier": "",
             "Description": desc,
-            "Original Description": original_desc,
             "In": amount if is_income else "",
             "Out": -amount if not is_income else "",
             "Total": amount if is_income else -amount,
             "Progressive Ledger Balance": "",
-            "Payment details": ""
+            "Payment details": "",
+            "Original Description": original_desc
         }
 
         # --- Custom Rules (exact output formatting) ---
@@ -144,7 +144,12 @@ def process_file(df):
 
         results.append(entry)
 
-    return pd.DataFrame(results)
+    df = pd.DataFrame(results)
+    # Move 'Original Description' column to the end (column M)
+    if 'Original Description' in df.columns:
+        original_col = df.pop('Original Description')
+        df['Original Description'] = original_col
+    return df
 
 # --- RUN ---
 if uploaded_file:
