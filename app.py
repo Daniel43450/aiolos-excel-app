@@ -27,6 +27,16 @@ st.markdown("""
             margin-bottom: 2em;
             text-align: center;
         }
+        .decor-box {
+            background-color: #e6f0ff;
+            border-left: 6px solid #003366;
+            padding: 1em;
+            margin: 2em auto;
+            width: 90%;
+            border-radius: 8px;
+            font-size: 1em;
+            color: #003366;
+        }
         .stButton>button {
             background-color: #003366;
             color: white;
@@ -42,6 +52,13 @@ st.markdown("""
 # --- HEADER ---
 st.markdown("<div class='title'>Aiolos</div>", unsafe_allow_html=True)
 st.markdown("<div class='subtitle'>Excel Classification Tool</div>", unsafe_allow_html=True)
+
+# --- Decorative Section ---
+st.markdown("""
+    <div class='decor-box'>
+        Upload your financial Excel statement and get an automatically categorized version ready for download — powered by Aiolos.
+    </div>
+""", unsafe_allow_html=True)
 
 # --- PROJECT SELECTION ---
 project_type = st.selectbox("Choose Excel Format:", ["DIAKOFTI"], index=0)
