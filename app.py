@@ -46,7 +46,24 @@ st.markdown("""
             background-color: #004080;
             color: white;
         }
+        .logo {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .logo img {
+            width: 120px;
+            border-radius: 100px;
+        }
     </style>
+""", unsafe_allow_html=True)
+
+# --- LOGO ---
+st.markdown("""
+    <div class='logo'>
+        <img src='https://raw.githubusercontent.com/Daniel43450/aiolos-excel/main/logo.png' alt='Aiolos Logo'>
+    </div>
 """, unsafe_allow_html=True)
 
 # --- HEADER ---
@@ -114,55 +131,31 @@ def process_file(df):
             "Payment details": ""
         }
 
-        # --- Custom Rules ---
+        # --- Custom Rules (exact output formatting) ---
         if "COM POO" in desc:
             entry["Type"] = "Bank"
             entry["Supplier"] = "Bank"
+            entry["Description"] = "Bank fees"
         if any(term in desc for term in ["ACCOUNTING", "BOOKKEEP", "ECOVIS"]) and not any(word in desc for word in ["YAG", "TAG"]):
             entry["Type"] = "Accounting"
             entry["Supplier"] = "Ecovis"
+            entry["Description"] = "Accountant monthly fees"
         if "GAS" in desc:
             entry["Type"] = "Fuel"
             entry["Supplier"] = "Gas Station"
+            entry["Description"] = "Fuel"
         if "DRAKAKIS" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Drakakis Tours"
-        if "COSM" in desc or "PHONE" in desc:
-            entry["Type"] = "Utility Bills"
-            entry["Supplier"] = "Cosmote"
-        if "GOOGLE" in desc:
-            entry["Type"] = "Marketing"
-            entry["Supplier"] = "Google"
-        if "UBER" in desc:
-            entry["Type"] = "Transportation"
-            entry["Supplier"] = "Uber"
-        if "AEGEAN" in desc:
-            entry["Type"] = "Travel"
-            entry["Supplier"] = "Aegean"
-        if "OPENAI" in desc:
-            entry["Type"] = "SaaS"
-            entry["Supplier"] = "OpenAI"
+            entry["Description"] = "Car rent fees"
+        if "FLIGHT" in desc or "AEGEAN" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Flight"
         if any(word in desc for word in ["DINNER", "FOOD", "CAFE", "COFFEE", "LUNCH", "BREAKFAST"]):
             entry["Type"] = "General"
             entry["Supplier"] = "F&B"
-        if "CAR" in desc:
-            entry["Type"] = "Transportation"
-            entry["Supplier"] = "Car Rental"
-        if "OASA" in desc:
-            entry["Type"] = "Transportation"
-            entry["Supplier"] = "OASA (Metro)"
-        if "CALEN" in desc:
-            entry["Type"] = "Construction works"
-            entry["Supplier"] = "Calen"
-            entry["Expenses Type"] = "Hard Cost"
-        if "CRM" in desc:
-            entry["Type"] = "reWire"
-            entry["Supplier"] = "Marketing"
-            entry["Description"] = "CRM"
-            entry["Expenses Type"] = "Soft Cost"
-
-        if "CONSTRUCTION" in desc or "HARD COST" in desc:
-            entry["Expenses Type"] = "Hard Cost"
+            entry["Description"] = "F&B"
 
         results.append(entry)
 
