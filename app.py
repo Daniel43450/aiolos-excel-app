@@ -3,12 +3,9 @@ import pandas as pd
 import re
 import datetime
 from io import BytesIO
-from docxtpl import DocxTemplate
-from docx2pdf import convert
-import os
 
 # --- UI CONFIG ---
-st.set_page_config(page_title="Aiolos App", layout="centered")
+st.set_page_config(page_title="Aiolos Excel Classifier", layout="centered")
 st.markdown("""
     <style>
         body {
@@ -56,29 +53,33 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- SIDEBAR NAVIGATION ---
-st.sidebar.title("Navigation")
-page = st.sidebar.radio("Go to", ["Excel Processor", "Receipt Generator"])
-if page == "Excel Processor":
-    # כאן נכנס כל הקוד של האקסל (כמו עכשיו)
+# --- Decorative Section ---
+st.markdown("""
+    <div class='decor-box'>
+        Upload your financial Excel statement and get an automatically categorized version ready for download — powered by Aiolos.
+    </div>
+""", unsafe_allow_html=True)
 
-elif page == "Receipt Generator":
-    # כאן נכנס כל הקוד של יצירת הקבלות
+# --- PROJECT SELECTION ---
+project_type = st.selectbox("Choose Excel Format:", ["DIAKOFTI"], index=0)
 
-# --- FUNCTIONS ---
+# --- FILE UPLOAD ---
+uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "csv"])
 
-# Excel Processing Related
+# --- PLOT RECOGNITION ---
+PLOTS = [
+    'Y1', 'Y2', 'Y3', 'Y6', 'Y4-7', 'Y8', 'R2', 'R4', 'B5', 'G2',
+    'R5A', 'R5B', 'R5C', 'R5D', 'W2', 'W8', 'B6', 'G1', 'G12', 'G13', 'B9-10-11'
+]
+
 def find_all_plots(description):
-    PLOTS = [
-        'Y1', 'Y2', 'Y3', 'Y6', 'Y4-7', 'Y8', 'R2', 'R4', 'B5', 'G2',
-        'R5A', 'R5B', 'R5C', 'R5D', 'W2', 'W8', 'B6', 'G1', 'G12', 'G13', 'B9-10-11'
-    ]
     found = []
     for plot in PLOTS:
         if re.search(rf"(?<!\\w){re.escape(plot)}(?!\\w)", description):
             found.append(plot)
     return found
 
+# --- MAIN PROCESSING FUNCTION ---
 def process_file(df):
     df = df.dropna(subset=['ΠΕΡΙΓΡΑΦΗ'])
     df['ΠΟΣΟ'] = df['ΠΟΣΟ'].astype(str).str.replace('.', '').str.replace(',', '.').astype(float)
@@ -116,6 +117,7 @@ def process_file(df):
         }
 
         filled = False
+
         if "COM POO" in desc:
             entry["Type"] = "Bank"
             entry["Supplier"] = "Bank"
@@ -175,6 +177,7 @@ def process_file(df):
                 entry["Description"] = "Planning"
             filled = True
 
+        # Highlight in yellow if not matched to a rule
         if not filled:
             entry["Description"] = f"🟨 {entry['Description']}"
 
@@ -186,72 +189,20 @@ def process_file(df):
         df['Original Description'] = original_col
     return df
 
-# Receipt Generator Related
-def generate_receipt(plot, villa_no, payment_order_number, client_name, date, sum_euro):
-    template = DocxTemplate("payment_template.docx")
-    context = {
-        "plot": plot,
-        "villa_no": villa_no,
-        "payment_order_number": payment_order_number,
-        "client_name": client_name,
-        "date": date.strftime("%d/%m/%Y"),
-        "sum": f"{sum_euro} Euro"
-    }
-    template.render(context)
-    filename_base = f"{plot} - Villa {villa_no} - Payment Order {payment_order_number}"
-    docx_filename = f"{filename_base}.docx"
-    pdf_filename = f"{filename_base}.pdf"
-    template.save(docx_filename)
-    convert(docx_filename)
-    os.remove(docx_filename)
-    return pdf_filename
+# --- RUN ---
+if uploaded_file:
+    if uploaded_file.name.endswith(".csv"):
+        raw_df = pd.read_csv(uploaded_file, encoding="ISO-8859-7")
+    else:
+        raw_df = pd.read_excel(uploaded_file)
 
-# --- PAGE LOGIC ---
-if page == "Excel Processor":
-    st.markdown("""
-        <div class='decor-box'>
-            Upload your financial Excel statement and get an automatically categorized version ready for download — powered by Aiolos.
-        </div>
-    """, unsafe_allow_html=True)
+    result_df = process_file(raw_df)
 
-    project_type = st.selectbox("Choose Excel Format:", ["DIAKOFTI"], index=0)
-    uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "csv"])
-
-    if uploaded_file:
-        if uploaded_file.name.endswith(".csv"):
-            raw_df = pd.read_csv(uploaded_file, encoding="ISO-8859-7")
-        else:
-            raw_df = pd.read_excel(uploaded_file)
-
-        result_df = process_file(raw_df)
-
-        to_download = BytesIO()
-        result_df.to_excel(to_download, index=False, engine='openpyxl')
-        st.download_button(
-            label="Download Processed File",
-            data=to_download.getvalue(),
-            file_name=f"aiolos_processed_{datetime.datetime.now().strftime('%Y%m%d')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-
-elif page == "Receipt Generator":
-    st.title("Receipt Generator - Aiolos")
-
-    with st.form("receipt_form"):
-        plot = st.text_input("Plot (e.g., G2)")
-        villa_no = st.text_input("Villa Number (e.g., 1)")
-        payment_order_number = st.number_input("Payment Order Number", min_value=1, step=1)
-        client_name = st.text_input("Client Name")
-        date = st.date_input("Date")
-        sum_euro = st.text_input("Sum (€)")
-
-        submitted = st.form_submit_button("Generate Receipt PDF")
-
-        if submitted:
-            if plot and villa_no and payment_order_number and client_name and date and sum_euro:
-                pdf_file = generate_receipt(plot, villa_no, payment_order_number, client_name, date, sum_euro)
-                st.success(f"✅ PDF created: {pdf_file}")
-                with open(pdf_file, "rb") as f:
-                    st.download_button('Download PDF', f, file_name=pdf_file)
-            else:
-                st.error("Please fill in all fields.")
+    to_download = BytesIO()
+    result_df.to_excel(to_download, index=False, engine='openpyxl')
+    st.download_button(
+        label="Download Processed File",
+        data=to_download.getvalue(),
+        file_name=f"aiolos_processed_{datetime.datetime.now().strftime('%Y%m%d')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
