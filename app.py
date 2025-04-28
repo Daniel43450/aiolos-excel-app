@@ -59,6 +59,11 @@ st.markdown("""
 # --- SIDEBAR NAVIGATION ---
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Go to", ["Excel Processor", "Receipt Generator"])
+if page == "Excel Processor":
+    # כאן נכנס כל הקוד של האקסל (כמו עכשיו)
+
+elif page == "Receipt Generator":
+    # כאן נכנס כל הקוד של יצירת הקבלות
 
 # --- FUNCTIONS ---
 
