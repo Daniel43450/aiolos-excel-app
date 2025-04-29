@@ -198,7 +198,6 @@ page = st.sidebar.radio("Go to", ["Excel Processor", "Receipt Generator", "Recei
 
 # --- EXCEL PROCESSOR PAGE ---
 with tab1:
-     if page == "Excel Processor":
         # --- Decorative Section ---
         st.title("Excel Processor")
         st.markdown("""
@@ -356,7 +355,6 @@ with tab1:
 
 # --- RECEIPT GENERATOR PAGE ---
 with tab2:
-    elif page == "Receipt Generator":
         st.title("Receipt Generator")
         st.markdown("""
             <div class='decor-box'>
@@ -777,8 +775,7 @@ with tab2:
 
 # --- RECEIPT HISTORY PAGE ---
 with tab3:
-     elif page == "Receipt History":
-        st.title("Receipt History")
+             st.title("Receipt History")
         st.markdown("""
             <div class='decor-box'>
                 View and manage your previously generated receipts — powered by Aiolos.
