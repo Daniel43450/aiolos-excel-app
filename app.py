@@ -5,7 +5,6 @@ import datetime
 import os
 from io import BytesIO
 import docx
-from docx2pdf import convert
 import tempfile
 from PIL import Image
 import base64
@@ -512,7 +511,6 @@ elif page == "Receipt Generator":
                 
                 # Convert to PDF
                 try:
-                    convert(output_docx_path, output_pdf_path)
                     
                     # Success message with file paths
                     st.success(f"Receipt generated successfully! Files saved to:\n- DOCX: {output_docx_path}\n- PDF: {output_pdf_path}")
