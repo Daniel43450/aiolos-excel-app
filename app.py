@@ -20,6 +20,29 @@ st.set_page_config(page_title="Aiolos Management System", layout="wide", initial
 st.sidebar.title("Navigation")
 st.sidebar.info("Select a section to continue")
 
+buyers_data = [
+    {"plot": "Y3", "villa": "Villa 2", "name": "Eli Malka"},
+    {"plot": "Y3", "villa": "Villa 3", "name": "Ran Hai"},
+    {"plot": "Y3", "villa": "Villa 5", "name": "Eliyahu Ovadia"},
+    {"plot": "Y4-7", "villa": "Villa 9", "name": "Elad Shimon Nissenholtz"},
+    {"plot": "Y4-7", "villa": "Villa 10", "name": "Dan Dikanoff"},
+    {"plot": "G2", "villa": "Villa 1", "name": "Ester Danziger"},
+    {"plot": "G2", "villa": "Villa 2", "name": "Gil Bar el"},
+    {"plot": "G2", "villa": "Villa 4", "name": "Michael Gurevich"},
+    {"plot": "G2", "villa": "Villa 5", "name": "Alexander Gurevich"},
+    {"plot": "G2", "villa": "Villa 6", "name": "Linkova Oksana M"},
+    {"plot": "G2", "villa": "Villa 7", "name": "Ofir Laor"},
+    {"plot": "G2", "villa": "Villa 8", "name": "Patrice Daniel Giami"},
+    {"plot": "G13", "villa": "Villa 2", "name": "Nir Goldberg"},
+    {"plot": "G13", "villa": "Villa 3", "name": "Nir Goldberg"},
+    {"plot": "G13", "villa": "Villa 4", "name": "Keren Goldberg"},
+    {"plot": "G13", "villa": "Villa 5", "name": "Rachel Goldberg Keidar"},
+    {"plot": "B5", "villa": "Villa 1", "name": "Keren Goldberg"},
+    {"plot": "R4", "villa": "Villa 1", "name": "Nirit Mizrahi"},
+    {"plot": "R4", "villa": "Villa 1", "name": "Itah Ella"}
+]
+
+
 # --- COMMON STYLES ---
 st.markdown("""
     <style>
@@ -355,102 +378,425 @@ if page == "Excel Processor":
         )
 
 # --- RECEIPT GENERATOR PAGE ---
-# --- RECEIPT GENERATOR PAGE ---
-page = st.radio("Select Page", ["Receipt Generator", "Buyer Directory"])
-
-if page == "Receipt Generator":
+elif page == "Receipt Generator":
     st.title("Receipt Generator")
     st.markdown("""
         <div class='decor-box'>
             Create professional receipts by uploading a template and filling in details — powered by Aiolos.
         </div>
     """, unsafe_allow_html=True)
-
+    
     # Make sure directories exist
     output_dir = ensure_directories()
-
-    buyers_data = [
-        {"plot": "Y3", "villa": "Villa 2", "name": "Eli Malka"},
-        {"plot": "Y3", "villa": "Villa 3", "name": "Ran Hai"},
-        {"plot": "Y3", "villa": "Villa 5", "name": "Eliyahu Ovadia"},
-        {"plot": "Y4-7", "villa": "Villa 9", "name": "Elad Shimon Nissenholtz"},
-        {"plot": "Y4-7", "villa": "Villa 10", "name": "Dan Dikanoff"},
-        {"plot": "G2", "villa": "Villa 1", "name": "Ester Danziger"},
-        {"plot": "G2", "villa": "Villa 2", "name": "Gil Bar el"},
-        {"plot": "G2", "villa": "Villa 4", "name": "Michael Gurevich"},
-        {"plot": "G2", "villa": "Villa 5", "name": "Alexander Gurevich"},
-        {"plot": "G2", "villa": "Villa 6", "name": "Linkova Oksana M"},
-        {"plot": "G2", "villa": "Villa 7", "name": "Ofir Laor"},
-        {"plot": "G2", "villa": "Villa 8", "name": "Patrice Daniel Giami"},
-        {"plot": "G13", "villa": "Villa 2", "name": "Nir Goldberg"},
-        {"plot": "G13", "villa": "Villa 3", "name": "Nir Goldberg"},
-        {"plot": "G13", "villa": "Villa 4", "name": "Keren Goldberg"},
-        {"plot": "G13", "villa": "Villa 5", "name": "Rachel Goldberg Keidar"},
-        {"plot": "B5", "villa": "Villa 1", "name": "Keren Goldberg"},
-        {"plot": "R4", "villa": "Villa 1", "name": "Nirit Mizrahi"},
-        {"plot": "R4", "villa": "Villa 1", "name": "Itah Ella"}
-    ]
-
-    with st.form("receipt_form"):
+    
+    # --- SESSION STATE SETUP ---
+    if 'template_path' not in st.session_state:
+        st.session_state.template_path = None
+    if 'last_generated_receipt' not in st.session_state:
+        st.session_state.last_generated_receipt = None
+    if 'receipt_history' not in st.session_state:
+        st.session_state.receipt_history = []
+    
+    # --- TEMPLATE UPLOAD ---
+    template_col1, template_col2 = st.columns([2, 1])
+    
+    with template_col1:
+        template_file = st.file_uploader("Upload Receipt Template (DOCX)", type=["docx"], key="template_uploader")
+    
+    with template_col2:
+        st.markdown("<br>", unsafe_allow_html=True)  # Add some spacing
+        if st.button("Use Default Template"):
+            # Reference to a default template if available
+            if os.path.exists("default_template.docx"):
+                st.session_state.template_path = "default_template.docx"
+                st.success("Default template loaded!")
+            else:
+                st.error("Default template not found. Please upload a template.")
+    
+    if template_file:
+        # Save the template temporarily
+        temp_dir = tempfile.mkdtemp()
+        template_path = os.path.join(temp_dir, "template.docx")
+        
+        with open(template_path, "wb") as f:
+            f.write(template_file.getvalue())
+        
+        st.session_state.template_path = template_path
+        st.success("Template uploaded successfully!")
+    
+    # --- RECEIPT FORM ---
+    if st.session_state.template_path:
+        st.subheader("Receipt Details")
+        
+        # Save form data to session state when filled
+        if 'form_filled' not in st.session_state:
+            st.session_state.form_filled = False
+        
+        # Auto-generate receipt number based on date and counter
+        if 'receipt_counter' not in st.session_state:
+            st.session_state.receipt_counter = len(st.session_state.receipt_history) + 1
+        
+        today = datetime.datetime.now()
+        default_receipt_number = f"AIOLOS-{today.strftime('%Y%m')}-{st.session_state.receipt_counter:03d}"
+        
+        # Form layout with columns
         col1, col2 = st.columns(2)
+        
         with col1:
-            plot_input = st.selectbox("Plot", sorted(set(b["plot"] for b in buyers_data)))
-            villa_input = st.text_input("Villa (e.g., Villa 2)")
+            receipt_number = st.text_input("Receipt Number", default_receipt_number)
+            receipt_date = st.date_input("Receipt Date", today)
+            customer_name = st.text_input("Customer Name", "")
+            customer_address = st.text_area("Customer Address", "", height=100)
             payment_method = st.selectbox("Payment Method", ["Bank Transfer", "Credit Card", "Cash", "Check"])
-            amount = st.number_input("Amount (€)", min_value=0.0, step=10.0)
+        
         with col2:
-            description = st.text_area("Description of Services")
+            description = st.text_area("Description of Services", "", height=100)
+            amount = st.number_input("Amount (€)", min_value=0.0, step=10.0)
             tax_rate = st.slider("Tax Rate (%)", 0, 24, 24)
-            receipt_date = st.date_input("Receipt Date", datetime.datetime.now())
-
-        submitted = st.form_submit_button("Generate Receipt")
-
-    if submitted:
-        customer_name = next((b['name'] for b in buyers_data if b['plot'] == plot_input and b['villa'].lower() == villa_input.lower()), None)
-
-        if not customer_name:
-            st.error("No buyer found for the provided plot and villa.")
-        elif not description or amount <= 0:
-            st.error("Please fill in all required fields.")
-        else:
             tax_amount = amount * (tax_rate / 100)
             total_amount = amount + tax_amount
+            
+            st.info(f"Base Amount: €{amount:.2f}")
+            st.info(f"Tax Amount: €{tax_amount:.2f}")
+            st.info(f"Total Amount: €{total_amount:.2f}")
+            
+            # Number to words conversion (optional)
+            def number_to_words(num):
+                # Simple implementation - could be expanded
+                units = ["", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"]
+                teens = ["", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen"]
+                tens = ["", "ten", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
+                
+                if num < 10:
+                    return units[num]
+                elif 11 <= num < 20:
+                    return teens[num - 10]
+                elif num < 100:
+                    return tens[num // 10] + ("-" + units[num % 10] if num % 10 != 0 else "")
+                else:
+                    return "amount too large"  # Simplified
+            
+            # Get integer and decimal parts
+            int_part = int(total_amount)
+            decimal_part = int((total_amount - int_part) * 100)
+            
+            amount_in_words = f"{number_to_words(int_part).capitalize()} euros and {number_to_words(decimal_part)} cents"
+            
+        # --- GENERATE RECEIPT ---
+        if st.button("Generate Receipt"):
+            if not customer_name or not description or amount <= 0:
+                st.error("Please fill in all required fields (Customer Name, Description, and Amount)")
+            else:
+                # Load the document
+                doc = docx.Document(st.session_state.template_path)
+                
+                # Define replacement dictionary for all placeholders
+                replacements = {
+                    "[RECEIPT_NUMBER]": receipt_number,
+                    "[RECEIPT_DATE]": receipt_date.strftime("%d/%m/%Y"),
+                    "[CUSTOMER_NAME]": customer_name,
+                    "[CUSTOMER_ADDRESS]": customer_address,
+                    "[DESCRIPTION]": description,
+                    "[AMOUNT]": f"€{amount:.2f}",
+                    "[TAX_RATE]": f"{tax_rate}%",
+                    "[TAX_AMOUNT]": f"€{tax_amount:.2f}",
+                    "[TOTAL_AMOUNT]": f"€{total_amount:.2f}",
+                    "[PAYMENT_METHOD]": payment_method,
+                    "[AMOUNT_IN_WORDS]": amount_in_words
+                }
+                
+                # Replace placeholders in all paragraphs
+                for paragraph in doc.paragraphs:
+                    for key, value in replacements.items():
+                        if key in paragraph.text:
+                            paragraph.text = paragraph.text.replace(key, value)
+                
+                # Also replace in tables if they exist
+                for table in doc.tables:
+                    for row in table.rows:
+                        for cell in row.cells:
+                            for paragraph in cell.paragraphs:
+                                for key, value in replacements.items():
+                                    if key in paragraph.text:
+                                        paragraph.text = paragraph.text.replace(key, value)
+                
+                # Create sanitized filename (remove special characters)
+                safe_customer_name = re.sub(r'[^\w\s-]', '', customer_name).strip().replace(' ', '_')
+                safe_receipt_number = re.sub(r'[^\w\s-]', '', receipt_number).strip().replace(' ', '_')
+                receipt_filename = f"{safe_receipt_number}_{safe_customer_name}"
+                
+                # Save paths
+                output_docx_path = os.path.join(output_dir, "docx", f"{receipt_filename}.docx")
+                output_pdf_path = os.path.join(output_dir, "pdf", f"{receipt_filename}.pdf")
+                
+                # Save the modified document
+                doc.save(output_docx_path)
+                
+                # Convert to PDF
+                try:
+                    
+                    # Success message with file paths
+                    st.success(f"Receipt generated successfully! Files saved to:\n- DOCX: {output_docx_path}\n- PDF: {output_pdf_path}")
+                    
+                    # Store receipt info in history
+                    receipt_info = {
+                        "number": receipt_number,
+                        "date": receipt_date.strftime("%d/%m/%Y"),
+                        "customer": customer_name,
+                        "amount": total_amount,
+                        "docx_path": output_docx_path,
+                        "pdf_path": output_pdf_path,
+                        "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                    st.session_state.receipt_history.append(receipt_info)
+                    st.session_state.last_generated_receipt = receipt_info
+                    st.session_state.receipt_counter += 1
+                    
+                    # Create download buttons
+                    col1, col2 = st.columns(2)
+                    
+                    with open(output_pdf_path, "rb") as f:
+                        pdf_bytes = f.read()
+                        
+                    with open(output_docx_path, "rb") as f:
+                        docx_bytes = f.read()
+                    
+                    with col1:
+                        st.download_button(
+                            label="Download Receipt PDF",
+                            data=pdf_bytes,
+                            file_name=f"{receipt_filename}.pdf",
+                            mime="application/pdf",
+                        )
+                    
+                    with col2:
+                        st.download_button(
+                            label="Download Receipt DOCX",
+                            data=docx_bytes,
+                            file_name=f"{receipt_filename}.docx",
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        )
+                    
+                    # Display PDF preview
+                    st.subheader("Receipt Preview")
+                    st.markdown(f"""
+                        <iframe src="data:application/pdf;base64,{base64.b64encode(pdf_bytes).decode('utf-8')}" 
+                                width="100%" height="500" type="application/pdf" class="pdf-preview"></iframe>
+                    """, unsafe_allow_html=True)
+                    
+                except Exception as e:
+                    st.error(f"Error converting to PDF: {e}")
+                    
+                    # Still offer the DOCX version
+                    with open(output_docx_path, "rb") as f:
+                        docx_bytes = f.read()
+                        
+                    st.download_button(
+                        label="Download Receipt DOCX",
+                        data=docx_bytes,
+                        file_name=f"{receipt_filename}.docx",
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    )
+    else:
+        st.info("Please upload a DOCX template with placeholders like [RECEIPT_NUMBER], [RECEIPT_DATE], [CUSTOMER_NAME], etc.")
+        
+        # Display example placeholders
+        st.subheader("Recommended Placeholders")
+        placeholders = """
+        - [RECEIPT_NUMBER] - The receipt's identifier
+        - [RECEIPT_DATE] - The date of the receipt
+        - [CUSTOMER_NAME] - Name of the customer
+        - [CUSTOMER_ADDRESS] - Full address of the customer
+        - [DESCRIPTION] - Description of services provided
+        - [AMOUNT] - Base amount before tax
+        - [TAX_RATE] - Tax percentage
+        - [TAX_AMOUNT] - Calculated tax amount
+        - [TOTAL_AMOUNT] - Total amount including tax
+        - [PAYMENT_METHOD] - Method of payment
+        - [AMOUNT_IN_WORDS] - Total amount expressed in words
+        """
+        st.code(placeholders, language="markdown")
+        
+    # --- BATCH RECEIPT GENERATION ---
+    st.markdown("---")
+    with st.expander("Batch Receipt Generation"):
+        st.markdown("""
+            <div class="batch-form">
+                <h3>Generate Multiple Receipts from CSV</h3>
+                <p>Upload a CSV file with receipt details to generate multiple receipts at once.</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # CSV upload
+        batch_file = st.file_uploader("Upload CSV with Receipt Data", type=["csv"], key="batch_uploader")
+        
+        if batch_file and st.session_state.template_path:
+            try:
+                # Load CSV data
+                batch_df = pd.read_csv(batch_file)
+                
+                # Display preview
+                st.subheader("CSV Preview")
+                st.dataframe(batch_df)
+                
+                # Check required columns
+                required_columns = ["receipt_number", "customer_name", "description", "amount", "tax_rate"]
+                missing_columns = [col for col in required_columns if col not in batch_df.columns]
+                
+                if missing_columns:
+                    st.error(f"Missing required columns: {', '.join(missing_columns)}")
+                    st.info("Your CSV must include: receipt_number, customer_name, description, amount, tax_rate")
+                else:
+                    if st.button("Generate Batch Receipts"):
+                        progress_bar = st.progress(0)
+                        status_text = st.empty()
+                        
+                        # Process each row
+                        successful_receipts = []
+                        failed_receipts = []
+                        
+                        for i, row in batch_df.iterrows():
+                            progress = (i + 1) / len(batch_df)
+                            progress_bar.progress(progress)
+                            status_text.text(f"Processing receipt {i+1} of {len(batch_df)}: {row['receipt_number']}")
+                            
+                            try:
+                                # Get row data with defaults
+                                receipt_number = str(row["receipt_number"])
+                                receipt_date = datetime.datetime.strptime(str(row.get("receipt_date", datetime.datetime.now().strftime("%Y-%m-%d"))), "%Y-%m-%d").date()
+                                customer_name = str(row["customer_name"])
+                                customer_address = str(row.get("customer_address", ""))
+                                description = str(row["description"])
+                                amount = float(row["amount"])
+                                tax_rate = float(row["tax_rate"])
+                                payment_method = str(row.get("payment_method", "Bank Transfer"))
+                                
+                                # Calculate amounts
+                                tax_amount = amount * (tax_rate / 100)
+                                total_amount = amount + tax_amount
+                                
+                                # Load document
+                                doc = docx.Document(st.session_state.template_path)
+                                
+                                # Create replacements dictionary
+                                replacements = {
+                                    "[RECEIPT_NUMBER]": receipt_number,
+                                    "[RECEIPT_DATE]": receipt_date.strftime("%d/%m/%Y"),
+                                    "[CUSTOMER_NAME]": customer_name,
+                                    "[CUSTOMER_ADDRESS]": customer_address,
+                                    "[DESCRIPTION]": description,
+                                    "[AMOUNT]": f"€{amount:.2f}",
+                                    "[TAX_RATE]": f"{tax_rate}%",
+                                    "[TAX_AMOUNT]": f"€{tax_amount:.2f}",
+                                    "[TOTAL_AMOUNT]": f"€{total_amount:.2f}",
+                                    "[PAYMENT_METHOD]": payment_method
+                                }
+                                
+                                # Apply replacements
+                                for paragraph in doc.paragraphs:
+                                    for key, value in replacements.items():
+                                        if key in paragraph.text:
+                                            paragraph.text = paragraph.text.replace(key, value)
+                                
+                                # Also in tables
+                                for table in doc.tables:
+                                    for row in table.rows:
+                                        for cell in row.cells:
+                                            for paragraph in cell.paragraphs:
+                                                for key, value in replacements.items():
+                                                    if key in paragraph.text:
+                                                        paragraph.text = paragraph.text.replace(key, value)
+                                
+                                # Create filenames
+                                safe_customer_name = re.sub(r'[^\w\s-]', '', customer_name).strip().replace(' ', '_')
+                                safe_receipt_number = re.sub(r'[^\w\s-]', '', receipt_number).strip().replace(' ', '_')
+                                receipt_filename = f"{safe_receipt_number}_{safe_customer_name}"
+                                
+                                # Save paths
+                                output_docx_path = os.path.join(output_dir, "docx", f"{receipt_filename}.docx")
+                                output_pdf_path = os.path.join(output_dir, "pdf", f"{receipt_filename}.pdf")
+                                
+                                # Save the document
+                                doc.save(output_docx_path)
+                                
+                                # Convert to PDF
+                                convert(output_docx_path, output_pdf_path)
+                                
+                                # Add to successful list
+                                receipt_info = {
+                                    "number": receipt_number,
+                                    "date": receipt_date.strftime("%d/%m/%Y"),
+                                    "customer": customer_name,
+                                    "amount": total_amount,
+                                    "docx_path": output_docx_path,
+                                    "pdf_path": output_pdf_path,
+                                    "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                }
+                                
+                                successful_receipts.append(receipt_info)
+                                st.session_state.receipt_history.append(receipt_info)
+                            
+                            except Exception as e:
+                                failed_receipts.append({
+                                    "receipt_number": receipt_number,
+                                    "customer_name": customer_name,
+                                    "error": str(e)
+                                })
+                        
+                        # Show results
+                        progress_bar.progress(1.0)
+                        status_text.text("Batch processing complete!")
+                        
+                        if successful_receipts:
+                            st.success(f"Successfully generated {len(successful_receipts)} receipts!")
+                            
+                            # Create a zip file of all PDFs
+                            zip_path = os.path.join(output_dir, f"batch_receipts_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.zip")
+                            
+                            import zipfile
+                            with zipfile.ZipFile(zip_path, 'w') as zipf:
+                                for receipt in successful_receipts:
+                                    zipf.write(receipt["pdf_path"], os.path.basename(receipt["pdf_path"]))
+                            
+                            # Offer zip download
+                            with open(zip_path, "rb") as f:
+                                zip_bytes = f.read()
+                                
+                            st.download_button(
+                                label="Download All PDFs as ZIP",
+                                data=zip_bytes,
+                                file_name=os.path.basename(zip_path),
+                                mime="application/zip",
+                            )
+                        
+                        if failed_receipts:
+                            st.error(f"Failed to generate {len(failed_receipts)} receipts.")
+                            st.dataframe(pd.DataFrame(failed_receipts))
+            
+            except Exception as e:
+                st.error(f"Error processing batch file: {e}")
+        
+        # Show CSV template
+        st.markdown("### CSV Template Format")
+        st.markdown("Your CSV file should include the following columns:")
+        
+        csv_template = """
+        receipt_number,receipt_date,customer_name,customer_address,description,amount,tax_rate,payment_method
+        AIOLOS-202504-001,2025-04-29,Company A,"123 Main St, Athens",Consulting Services,1000,24,Bank Transfer
+        AIOLOS-202504-002,2025-04-29,Company B,"456 Oak Ave, Heraklion",Property Management,2500,24,Credit Card
+        """
+        
+        st.code(csv_template, language="csv")
+        
+        # Download template button
+        csv_template_bytes = csv_template.strip().encode()
+        st.download_button(
+            label="Download CSV Template",
+            data=csv_template_bytes,
+            file_name="receipt_template.csv",
+            mime="text/csv",
+        )
 
-            receipt_number = f"AIOLOS-{datetime.datetime.now().strftime('%Y%m')}-{plot_input}-{villa_input.replace(' ', '')}"
-
-            doc = docx.Document()
-            doc.add_heading("Receipt", level=1)
-            doc.add_paragraph(f"Receipt Number: {receipt_number}")
-            doc.add_paragraph(f"Date: {receipt_date.strftime('%d/%m/%Y')}")
-            doc.add_paragraph(f"Customer: {customer_name}")
-            doc.add_paragraph(f"Plot: {plot_input}, Villa: {villa_input}")
-            doc.add_paragraph(f"Description: {description}")
-            doc.add_paragraph(f"Amount: €{amount:.2f}")
-            doc.add_paragraph(f"Tax Rate: {tax_rate}%")
-            doc.add_paragraph(f"Tax Amount: €{tax_amount:.2f}")
-            doc.add_paragraph(f"Total Amount: €{total_amount:.2f}")
-            doc.add_paragraph(f"Payment Method: {payment_method}")
-
-            safe_name = re.sub(r'[^\w\s-]', '', customer_name).strip().replace(' ', '_')
-            filename = f"{receipt_number}_{safe_name}.docx"
-            filepath = os.path.join(output_dir, filename)
-            doc.save(filepath)
-
-            with open(filepath, "rb") as f:
-                st.download_button(
-                    label="Download Receipt (DOCX)",
-                    data=f.read(),
-                    file_name=filename,
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                )
-
-elif page == "Buyer Directory":
-    st.title("Buyer Directory")
-    st.markdown("Below is the list of all current buyers by plot and villa.")
-
-    df = pd.DataFrame(buyers_data)
-    df = df.sort_values(by=["plot", "villa"])
-    st.dataframe(df)
 # --- RECEIPT HISTORY PAGE ---
 elif page == "Receipt History":
     st.title("Receipt History")
