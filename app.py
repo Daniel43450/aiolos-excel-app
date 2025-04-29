@@ -18,6 +18,8 @@ locale.setlocale(locale.LC_ALL, '')
 
 # --- APPLICATION SETUP ---
 st.set_page_config(page_title="Aiolos Management System", layout="wide", initial_sidebar_state="expanded")
+st.sidebar.title("Navigation")
+st.sidebar.info("Select a section to continue")
 
 # --- COMMON STYLES ---
 st.markdown("""
