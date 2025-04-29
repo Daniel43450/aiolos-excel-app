@@ -20,6 +20,29 @@ st.set_page_config(page_title="Aiolos Management System", layout="wide", initial
 st.sidebar.title("Navigation")
 st.sidebar.info("Select a section to continue")
 
+buyers_data = [
+    {"plot": "Y3", "villa": "Villa 2", "name": "Eli Malka"},
+    {"plot": "Y3", "villa": "Villa 3", "name": "Ran Hai"},
+    {"plot": "Y3", "villa": "Villa 5", "name": "Eliyahu Ovadia"},
+    {"plot": "Y4-7", "villa": "Villa 9", "name": "Elad Shimon Nissenholtz"},
+    {"plot": "Y4-7", "villa": "Villa 10", "name": "Dan Dikanoff"},
+    {"plot": "G2", "villa": "Villa 1", "name": "Ester Danziger"},
+    {"plot": "G2", "villa": "Villa 2", "name": "Gil Bar el"},
+    {"plot": "G2", "villa": "Villa 4", "name": "Michael Gurevich"},
+    {"plot": "G2", "villa": "Villa 5", "name": "Alexander Gurevich"},
+    {"plot": "G2", "villa": "Villa 6", "name": "Linkova Oksana M"},
+    {"plot": "G2", "villa": "Villa 7", "name": "Ofir Laor"},
+    {"plot": "G2", "villa": "Villa 8", "name": "Patrice Daniel Giami"},
+    {"plot": "G13", "villa": "Villa 2", "name": "Nir Goldberg"},
+    {"plot": "G13", "villa": "Villa 3", "name": "Nir Goldberg"},
+    {"plot": "G13", "villa": "Villa 4", "name": "Keren Goldberg"},
+    {"plot": "G13", "villa": "Villa 5", "name": "Rachel Goldberg Keidar"},
+    {"plot": "B5", "villa": "Villa 1", "name": "Keren Goldberg"},
+    {"plot": "R4", "villa": "Villa 1", "name": "Nirit Mizrahi"},
+    {"plot": "R4", "villa": "Villa 1", "name": "Itah Ella"}
+]
+
+
 # --- COMMON STYLES ---
 st.markdown("""
     <style>
