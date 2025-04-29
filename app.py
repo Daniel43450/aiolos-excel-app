@@ -14,7 +14,7 @@ import shutil
 import glob
 
 # Set locale for number formatting
-locale.setlocale(locale.LC_ALL, '')
+locale.setlocale(locale.LC_ALL, '') GD
 
 # --- APPLICATION SETUP ---
 st.set_page_config(page_title="Aiolos Management System", layout="wide", initial_sidebar_state="expanded")
