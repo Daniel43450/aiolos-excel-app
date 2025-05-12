@@ -133,6 +133,11 @@ def process_file(df):
             entry["Supplier"] = "Transportation"
             entry["Description"] = "Gas station"
             filled = True
+        if "OASA" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Transportation"
+            filled = True
         if "DRAKAKIS" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Drakakis Tours"
