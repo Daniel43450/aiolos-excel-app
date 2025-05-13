@@ -411,7 +411,7 @@ def process_athens_file(df):
         amount = abs(float(str(row['Ποσό συναλλαγής']).replace('.', '').replace(',', '.')))
 
         entry = {
-            "Date": row['Ημ/νία συναλλαγής'].strftime('%d/%m/%Y') if not pd.isnull(row['Ημ/νία συναλλαγής']) else '',
+            "Date": row['Ημερομηνία'].strftime('%d/%m/%Y') if not pd.isnull(row['Ημερομηνία']) else '',
             "Income/outcome": "Income" if row['Ποσό συναλλαγής'] > 0 else "Outcome",
             "Plot": "Diakofti" if "DIAKOFTI" in desc else ("Mobee" if "MOBEE" in desc else "All Projects"),
             "Expenses Type": "Soft Cost",
