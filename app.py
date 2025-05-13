@@ -61,7 +61,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- PROJECT SELECTION ---
-project_type = st.selectbox("Choose Excel Format:", ["DIAKOFTI"], index=0)
+project_type = st.selectbox("Choose Excel Format:", ["DIAKOFTI", "ATHENS"], index=0)
 
 # --- FILE UPLOAD ---
 uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx", "csv"])
@@ -133,11 +133,6 @@ def process_file(df):
             entry["Supplier"] = "Transportation"
             entry["Description"] = "Gas station"
             filled = True
-        if "OASA" in desc:
-            entry["Type"] = "Project management"
-            entry["Supplier"] = "Transportation"
-            entry["Description"] = "Transportation"
-            filled = True
         if "DRAKAKIS" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Drakakis Tours"
@@ -147,18 +142,6 @@ def process_file(df):
             entry["Type"] = "Project management"
             entry["Supplier"] = "Transportation"
             entry["Description"] = "Flight"
-            filled = True
-    
-        if any(term in desc for term in ["COSM", "COSMOTE", "PHONE"]):
-            entry["Type"] = "Utility Bills"
-            entry["Supplier"] = "Cosmote"
-            entry["Description"] = "Phone bill"
-            filled = True
-
-        if any(term in desc for term in ["MANAGEMENT", "MANAG.", "MGMT", "MNGMT"]) and row['ΠΟΣΟ'] in [-1550, -1550.00, -1550.0, 1550.00, 1550.0, 1550]:
-            entry["Type"] = "Worker 1"
-            entry["Supplier"] = "Aiolos Athens"
-            entry["Description"] = "management fees"
             filled = True
         if any(word in desc for word in ["DINNER", "FOOD", "CAFE", "COFFEE", "LUNCH", "BREAKFAST"]):
             entry["Type"] = "General"
@@ -192,6 +175,24 @@ def process_file(df):
                 entry["Description"] = "Supervision"
             else:
                 entry["Description"] = "Planning"
+            filled = True
+
+        if "OASA" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Transportation"
+            filled = True
+
+        if any(term in desc for term in ["MANAGEMENT", "MANAG.", "MGMT", "MNGMT"]) and row['ΠΟΣΟ'] in [-1550, -1550.00, -1550.0, 1550.00, 1550.0, 1550]:
+            entry["Type"] = "Worker 1"
+            entry["Supplier"] = "Aiolos Athens"
+            entry["Description"] = "management fees"
+            filled = True
+
+                if any(term in desc for term in ["COSM", "COSMOTE", "PHONE"]):
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Cosmote"
+            entry["Description"] = "Phone bill"
             filled = True
 
         # Highlight in yellow if not matched to a rule
