@@ -79,7 +79,12 @@ def find_all_plots(description):
             found.append(plot)
     return found
 
-# --- MAIN PROCESSING FUNCTION ---
+# Placeholder for ATHENS processing (to be implemented later)
+def process_athens_file(df):
+    df["NOTE"] = "ATHENS format not yet supported"
+    return df
+
+# --- MAIN PROCESSING FUNCTION FOR DIAKOFTI ---
 def process_file(df):
     df = df.dropna(subset=['ΠΕΡΙΓΡΑΦΗ'])
     df['ΠΟΣΟ'] = df['ΠΟΣΟ'].astype(str).str.replace('.', '').str.replace(',', '.').astype(float)
@@ -176,26 +181,22 @@ def process_file(df):
             else:
                 entry["Description"] = "Planning"
             filled = True
-
         if "OASA" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Transportation"
             entry["Description"] = "Transportation"
             filled = True
-
         if any(term in desc for term in ["MANAGEMENT", "MANAG.", "MGMT", "MNGMT"]) and row['ΠΟΣΟ'] in [-1550, -1550.00, -1550.0, 1550.00, 1550.0, 1550]:
             entry["Type"] = "Worker 1"
             entry["Supplier"] = "Aiolos Athens"
             entry["Description"] = "management fees"
             filled = True
-
-                if any(term in desc for term in ["COSM", "COSMOTE", "PHONE"]):
+        if any(term in desc for term in ["COSM", "COSMOTE", "PHONE"]):
             entry["Type"] = "Utility Bills"
             entry["Supplier"] = "Cosmote"
             entry["Description"] = "Phone bill"
             filled = True
 
-        # Highlight in yellow if not matched to a rule
         if not filled:
             entry["Description"] = f"🟨 {entry['Description']}"
 
@@ -208,7 +209,7 @@ def process_file(df):
     return df
 
 # --- RUN ---
-if uploaded_file:
+if uploaded_file and project_type == "DIAKOFTI":
     if uploaded_file.name.endswith(".csv"):
         raw_df = pd.read_csv(uploaded_file, encoding="ISO-8859-7")
     else:
@@ -221,6 +222,19 @@ if uploaded_file:
     st.download_button(
         label="Download Processed File",
         data=to_download.getvalue(),
-        file_name=f"aiolos_processed_{datetime.datetime.now().strftime('%Y%m%d')}.xlsx",
+        file_name=f"diakofti_processed_{datetime.datetime.now().strftime('%Y%m%d')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+elif uploaded_file and project_type == "ATHENS":
+    raw_df = pd.read_excel(uploaded_file)
+    result_df = process_athens_file(raw_df)
+
+    to_download = BytesIO()
+    result_df.to_excel(to_download, index=False, engine='openpyxl')
+    st.download_button(
+        label="Download Processed File",
+        data=to_download.getvalue(),
+        file_name=f"athens_processed_{datetime.datetime.now().strftime('%Y%m%d')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
