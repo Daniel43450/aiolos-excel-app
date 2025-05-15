@@ -664,21 +664,74 @@ if selected_page == "Excel Classifier":
 
 # --- RECEIPT GENERATOR PAGE ---
 elif selected_page == "Receipt Generator":
-    st.markdown("""
-    <div class="card">
-        <h2 class="card-title">Receipt Generator <span class="coming-soon">Coming Soon</span></h2>
-        <p>Generate professional receipts from your transaction data.</p>
-        
-        <div style="display: flex; align-items: center; justify-content: center; padding: 2rem;">
-            <div style="text-align: center;">
-                <img src="https://raw.githubusercontent.com/Daniel43450/aiolos-excel-app/main/Capture.PNG" width="120">
-                <p style="margin-top: 1rem; color: #666; font-size: 0.9rem;">
-                    We're developing this feature to help you create and manage receipts with ease.
-                </p>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    from docx import Document
+
+    st.markdown("## Receipt Generator")
+
+    villa_owners = {
+        ("Y1", "Villa 1"): "George Bezerianos",
+        ("Y1", "Villa 2"): "Shelley Furman Assa",
+        ("Y2", "Villa 1"): "Shimrit Bourla",
+        ("Y2", "Villa 2"): "Chen Arad",
+        ("Y3", "Villa 1"): "Ronen Doron Aviram",
+        ("Y3", "Villa 2"): "Ronen Ofec",
+        ("Y3", "Villa 3"): "Eli Malka",
+        ("Y3", "Villa 4"): "Ran Hai",
+        ("Y3", "Villa 5"): "Eliyahu Ovadia",
+        ("Y4-7", "Villa 9"): "Elad Shimon Nissenholtz",
+        ("Y4-7", "Villa 10"): "Dan Dikanoff",
+        ("G2", "Villa 1"): "Ester Danziger",
+        ("G2", "Villa 2"): "Gil Bar el",
+        ("G2", "Villa 3"): "Michael Gurevich",
+        ("G2", "Villa 4"): "Tal Goldner-Gurevich",
+        ("G2", "Villa 5"): "Alexander Gurevich",
+        ("G2", "Villa 6"): "Linkova Oksana M",
+        ("G2", "Villa 7"): "Ofir Laor",
+        ("G2", "Villa 8"): "Patrice Daniel Giami",
+        ("G13", "Villa 1"): "Nir Goldberg",
+        ("G13", "Villa 2"): "Nir Goldberg",
+        ("G13", "Villa 3"): "Keren Goldberg",
+        ("G13", "Villa 4"): "Keren Goldberg",
+        ("G13", "Villa 5"): "Rachel Goldberg Keidar",
+        ("R4", "Villa 1"): "Itah Ella",
+    }
+
+    with st.form("receipt_form"):
+        project = st.selectbox("Select Project", sorted(set(k[0] for k in villa_owners)))
+        villa = st.selectbox("Select Villa", sorted(set(k[1] for k in villa_owners if k[0] == project)))
+        client_name = villa_owners.get((project, villa), "")
+
+        payment_order_number = st.text_input("Payment Order #")
+        sum_euro = st.text_input("Sum (€)")
+        extra_text = st.text_area("Extra Payment Text (optional)", "")
+        submit_btn = st.form_submit_button("Generate Receipt")
+
+    if submit_btn:
+        template = Document("default_tempate.docx")
+
+        for p in template.paragraphs:
+            p.text = p.text.replace("{{date}}", datetime.datetime.now().strftime("%d/%m/%Y"))
+            p.text = p.text.replace("{{plot}}", project)
+            p.text = p.text.replace("{{villa_no}}", villa)
+            p.text = p.text.replace("{{client_name}}", client_name)
+            p.text = p.text.replace("{{payment_order_number}}", payment_order_number)
+            p.text = p.text.replace("{{sum}}", sum_euro)
+            p.text = p.text.replace("{{Extra Payment text}}", extra_text)
+
+        buffer = BytesIO()
+        template.save(buffer)
+        buffer.seek(0)
+
+        filename = f"Diakofti Village Project - {project} {villa} - Payment order #{payment_order_number}.docx"
+
+        st.success("Receipt ready!")
+        st.download_button(
+            label="Download Word Receipt",
+            data=buffer,
+            file_name=filename,
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+
 
 # --- PAYMENT INSTRUCTIONS PAGE ---
 elif selected_page == "Payment Instructions":
