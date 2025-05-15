@@ -18,172 +18,6 @@ PAGES = {
     "Payment Instructions": "payments"
 }
 
-# --- CUSTOM CSS FOR MINIMALIST UI ---
-st.markdown("""
-    <style>
-        /* Global styling */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            color: #333;
-        }
-        
-        /* Sidebar styling */
-        .css-1d391kg {
-            background-color: #f8f9fa;
-        }
-        
-        /* Header styling */
-        .header-container {
-            padding: 1.5rem 0;
-            margin-bottom: 1.5rem;
-            border-bottom: 1px solid #eaeaea;
-        }
-        
-        .app-header {
-            color: #1a1a1a;
-            font-size: 1.8rem;
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-        }
-        
-        .app-subheader {
-            color: #777;
-            font-size: 1rem;
-            font-weight: 400;
-        }
-        
-        /* Card styling */
-        .card {
-            background-color: white;
-            border-radius: 4px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            border: 1px solid #eaeaea;
-        }
-        
-        .card-title {
-            color: #1a1a1a;
-            font-size: 1.2rem;
-            font-weight: 500;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid #eaeaea;
-        }
-        
-        /* Button styling - more minimalist */
-        .stButton>button {
-            background-color: #1a1a1a;
-            color: white;
-            border-radius: 4px;
-            font-weight: 500;
-            border: none;
-            padding: 0.5rem 1rem;
-        }
-        
-        .stButton>button:hover {
-            background-color: #333;
-        }
-        
-        /* File uploader styling */
-        .uploadedFile {
-            border: 1px solid #eaeaea;
-            border-radius: 4px;
-            padding: 1rem;
-        }
-        
-        /* Status indicator styling */
-        .status-success {
-            background-color: #f2f9f2;
-            color: #2e7d32;
-            padding: 0.75rem;
-            border-radius: 4px;
-            border-left: 3px solid #2e7d32;
-            margin-top: 1rem;
-        }
-        
-        .status-waiting {
-            background-color: #fff8e6;
-            color: #856404;
-            padding: 0.75rem;
-            border-radius: 4px;
-            border-left: 3px solid #ffc107;
-            margin-top: 1rem;
-        }
-        
-        /* Progress indicator */
-        .step-indicator {
-            display: flex;
-            margin: 1.5rem 0;
-            gap: 0.5rem;
-        }
-        
-        .step {
-            background-color: #f0f0f0;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            color: #777;
-        }
-        
-        .step-active {
-            background-color: #1a1a1a;
-            color: white;
-        }
-        
-        .step-complete {
-            background-color: #eaf0ea;
-            color: #2e7d32;
-        }
-        
-        /* Coming soon label */
-        .coming-soon {
-            display: inline-block;
-            background-color: #f0f0f0;
-            color: #777;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            margin-left: 0.5rem;
-        }
-        
-        /* Footer styling */
-        .footer {
-            text-align: center;
-            margin-top: 2rem;
-            padding: 1rem;
-            color: #777;
-            font-size: 0.8rem;
-            border-top: 1px solid #eaeaea;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
-# --- SIDEBAR NAVIGATION ---
-with st.sidebar:
-    st.image('https://raw.githubusercontent.com/Daniel43450/aiolos-excel-app/main/Capture.PNG', width=100)
-    st.title("Aiolos Financial Tools")
-    
-    selected_page = st.radio(
-        "Navigation",
-        list(PAGES.keys())
-    )
-    
-    st.markdown("---")
-    st.markdown("### About")
-    st.markdown("""
-        This application helps you manage and organize financial data for Aiolos projects.
-    """)
-
-# --- APP HEADER ---
-st.markdown("""
-    <div class="header-container">
-        <h1 class="app-header">Aiolos Financial Tools</h1>
-        <p class="app-subheader">Streamline your financial management processes</p>
-    </div>
-""", unsafe_allow_html=True)
-
 # --- PLOTS RECOGNITION FUNCTIONS ---
 PLOTS = [
     'Y1', 'Y2', 'Y3', 'Y6', 'Y4-7', 'Y8', 'R2', 'R4', 'B5', 'G2',
@@ -450,119 +284,363 @@ def process_file(df):
         df['Original Description'] = original_col
     return df
 
-# --- PAGE CONTENT BASED ON SELECTION ---
-if selected_page == "Excel Classifier":
-    st.subheader("Excel Classifier")
-    st.markdown("Categorize and organize your financial Excel statements automatically.")
+# --- CUSTOM CSS FOR CLEAN, MINIMAL UI ---
+st.markdown("""
+<style>
+    /* Main theme colors */
+    :root {
+        --primary: #0366d6;
+        --background: #ffffff;
+        --card-bg: #ffffff;
+        --text: #333333;
+        --border: #eaeaea;
+        --accent: #f3f5f7;
+        --success: #28a745;
+        --warning: #ffc107;
+        --radius: 8px;
+    }
     
-    # Create two columns
+    /* Base typography */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+    
+    html, body, [class*="st-"] {
+        font-family: 'Inter', sans-serif;
+        color: var(--text);
+    }
+    
+    /* App header */
+    .app-header {
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border);
+    }
+    
+    .app-title {
+        font-weight: 600;
+        font-size: 1.5rem;
+        margin-bottom: 0.25rem;
+        color: var(--text);
+    }
+    
+    .app-subtitle {
+        font-weight: 400;
+        font-size: 0.9rem;
+        color: #666;
+        margin-bottom: 1rem;
+    }
+    
+    /* Card styling */
+    .card {
+        background-color: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    
+    .card-title {
+        font-size: 1rem;
+        font-weight: 500;
+        margin-bottom: 1rem;
+        color: var(--text);
+    }
+    
+    /* Status indicators */
+    .status {
+        padding: 0.75rem;
+        border-radius: var(--radius);
+        margin: 1rem 0;
+    }
+    
+    .status-success {
+        background-color: rgba(40, 167, 69, 0.1);
+        border-left: 3px solid var(--success);
+    }
+    
+    .status-warning {
+        background-color: rgba(255, 193, 7, 0.1);
+        border-left: 3px solid var(--warning);
+    }
+    
+    /* Progress steps */
+    .steps {
+        display: flex;
+        margin: 1rem 0;
+        padding: 0;
+        list-style: none;
+    }
+    
+    .step-item {
+        flex: 1;
+        text-align: center;
+        padding: 0.5rem;
+        font-size: 0.8rem;
+        position: relative;
+        color: #999;
+    }
+    
+    .step-active {
+        color: var(--primary);
+        font-weight: 500;
+    }
+    
+    .step-complete {
+        color: var(--success);
+    }
+    
+    .step-item:not(:last-child):after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        right: -0.5rem;
+        width: 1rem;
+        height: 1px;
+        background-color: var(--border);
+    }
+    
+    /* Coming soon tag */
+    .coming-soon {
+        display: inline-block;
+        background-color: var(--accent);
+        padding: 0.2rem 0.5rem;
+        border-radius: var(--radius);
+        font-size: 0.7rem;
+        margin-left: 0.5rem;
+        font-weight: 500;
+        color: #777;
+    }
+    
+    /* Footer */
+    .footer {
+        text-align: center;
+        margin-top: 2rem;
+        padding-top: 1rem;
+        color: #777;
+        font-size: 0.8rem;
+        border-top: 1px solid var(--border);
+    }
+    
+    /* Hide Streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    
+    /* Button styling */
+    .stButton>button {
+        background-color: var(--primary);
+        color: white;
+        font-weight: 500;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius);
+        transition: all 0.2s ease;
+    }
+    
+    .stButton>button:hover {
+        background-color: rgba(3, 102, 214, 0.8);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    /* Metric cards */
+    .metric-row {
+        display: flex;
+        gap: 1rem;
+        margin: 1rem 0;
+    }
+    
+    .metric-card {
+        background-color: var(--accent);
+        padding: 0.75rem 1rem;
+        border-radius: var(--radius);
+        flex: 1;
+    }
+    
+    .metric-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text);
+    }
+    
+    .metric-label {
+        font-size: 0.8rem;
+        color: #666;
+    }
+    
+    /* File uploader */
+    .uploadedFile {
+        border: 1px dashed var(--border);
+        border-radius: var(--radius);
+        padding: 1rem;
+        background-color: var(--accent);
+    }
+    
+    /* Data preview */
+    .preview-container {
+        margin: 1rem 0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+    }
+    
+    /* Sidebar styling */
+    .sidebar .sidebar-content {
+        background-color: var(--accent);
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# --- HEADER ---
+st.markdown("""
+<div class="app-header">
+    <h1 class="app-title">Aiolos Financial Tools</h1>
+    <p class="app-subtitle">Financial management simplified</p>
+</div>
+""", unsafe_allow_html=True)
+
+# --- SIDEBAR ---
+with st.sidebar:
+    st.image('https://raw.githubusercontent.com/Daniel43450/aiolos-excel-app/main/Capture.PNG', width=80)
+    
+    selected_page = st.radio(
+        "",
+        list(PAGES.keys())
+    )
+    
+    st.markdown("---")
+    st.markdown("""
+        <div style="font-size: 0.85rem; color: #666;">
+        Aiolos Financial Tools • v1.2.1<br>
+        Streamline your financial processes
+        </div>
+    """, unsafe_allow_html=True)
+
+# --- EXCEL CLASSIFIER PAGE ---
+if selected_page == "Excel Classifier":
+    st.markdown("""
+    <div class="card">
+        <h2 class="card-title">Excel Classifier</h2>
+        <p>Categorize and organize your financial Excel statements with ease.</p>
+    """, unsafe_allow_html=True)
+    
+    # Track progress
+    if 'step' not in st.session_state:
+        st.session_state.step = 1
+    
+    # Progress steps
+    st.markdown("""
+        <ul class="steps">
+            <li class="step-item {0}">Select Format</li>
+            <li class="step-item {1}">Upload File</li>
+            <li class="step-item {2}">Process Data</li>
+            <li class="step-item {3}">Download Results</li>
+        </ul>
+    """.format(
+        "step-active" if st.session_state.step == 1 else "step-complete" if st.session_state.step > 1 else "",
+        "step-active" if st.session_state.step == 2 else "step-complete" if st.session_state.step > 2 else "",
+        "step-active" if st.session_state.step == 3 else "step-complete" if st.session_state.step > 3 else "",
+        "step-active" if st.session_state.step == 4 else "step-complete" if st.session_state.step > 4 else ""
+    ), unsafe_allow_html=True)
+    
+    # Form layout
     col1, col2 = st.columns([3, 1])
     
     with col1:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown('<h3 class="card-title">Upload & Process</h3>', unsafe_allow_html=True)
-        
-        # Step indicator
-        step = 1
-        if 'step' in st.session_state:
-            step = st.session_state.step
-        
-        st.markdown(f"""
-            <div class="step-indicator">
-                <div class="step {'step-active' if step == 1 else 'step-complete' if step > 1 else ''}">1. Select Format</div>
-                <div class="step {'step-active' if step == 2 else 'step-complete' if step > 2 else ''}">2. Upload File</div>
-                <div class="step {'step-active' if step == 3 else 'step-complete' if step > 3 else ''}">3. Process Data</div>
-                <div class="step {'step-active' if step == 4 else 'step-complete' if step > 4 else ''}">4. Download Result</div>
-            </div>
-        """, unsafe_allow_html=True)
-        
         # Format selection
         project_type = st.selectbox(
-            "Excel Format:",
+            "Format Type",
             ["DIAKOFTI", "ATHENS"],
             index=0,
-            help="Select the appropriate format based on your Excel file structure"
+            help="Select the format that matches your data structure"
         )
         
         # File upload
         uploaded_file = st.file_uploader(
-            "Upload Excel file",
+            "Upload Excel File",
             type=["xlsx", "csv"],
-            help="Upload your financial statements Excel file (.xlsx or .csv format)"
+            help="Upload an Excel or CSV file to process"
         )
-        
-        if uploaded_file:
-            st.session_state.step = 2
-            st.markdown('<div class="status-success">', unsafe_allow_html=True)
-            st.write(f"✅ File uploaded: {uploaded_file.name}")
-            st.write(f"📊 Format type: {project_type}")
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.markdown('</div>', unsafe_allow_html=True)
     
     with col2:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown('<h3 class="card-title">Format Details</h3>', unsafe_allow_html=True)
-        
-        if project_type == "DIAKOFTI":
-            st.markdown("""
-                **DIAKOFTI Format**:
-                
-                - Plot identification
-                - Transaction categorization
-                - Supplier tracking
-                - Payment details
-            """)
-        else:
-            st.markdown("""
-                **ATHENS Format**:
-                
-                - Project allocation
-                - Transaction type  
-                - Supplier details
-                - Income/outcome tracking
-            """)
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("""
+            <div style="background-color: #f8f9fa; padding: 1rem; border-radius: 8px; font-size: 0.9rem;">
+                <p><strong>Format Guide</strong></p>
+                <ul style="padding-left: 1rem; margin-bottom: 0;">
+                    <li>DIAKOFTI: For plot-based transactions</li>
+                    <li>ATHENS: For Athens office transactions</li>
+                </ul>
+            </div>
+        """, unsafe_allow_html=True)
     
-    # --- PROCESSING AND RESULTS SECTION ---
+    # Processing section
     if uploaded_file:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown('<h3 class="card-title">Processing Results</h3>', unsafe_allow_html=True)
+        st.session_state.step = 2
         
-        # Processing animation
-        with st.spinner("Processing your file..."):
-            if project_type == "DIAKOFTI":
-                if uploaded_file.name.endswith(".csv"):
-                    raw_df = pd.read_csv(uploaded_file, encoding="ISO-8859-7")
-                else:
+        st.markdown("""
+        <div class="status status-success">
+            <strong>File uploaded:</strong> {0}<br>
+            <strong>Format:</strong> {1}
+        </div>
+        """.format(uploaded_file.name, project_type), unsafe_allow_html=True)
+        
+        # Process button
+        process_button = st.button("Process File")
+        
+        if process_button:
+            with st.spinner("Processing data..."):
+                if project_type == "DIAKOFTI":
+                    if uploaded_file.name.endswith(".csv"):
+                        raw_df = pd.read_csv(uploaded_file, encoding="ISO-8859-7")
+                    else:
+                        raw_df = pd.read_excel(uploaded_file)
+                    
+                    result_df = process_file(raw_df)
+                    st.session_state.step = 3
+                    
+                elif project_type == "ATHENS":
                     raw_df = pd.read_excel(uploaded_file)
+                    result_df = process_athens_file(raw_df)
+                    st.session_state.step = 3
                 
-                result_df = process_file(raw_df)
-                st.session_state.step = 3
-                
-            elif project_type == "ATHENS":
-                raw_df = pd.read_excel(uploaded_file)
-                result_df = process_athens_file(raw_df)
-                st.session_state.step = 3
+                # Store results
+                st.session_state.result_df = result_df
+    
+    # Results display
+    if 'result_df' in st.session_state:
+        result_df = st.session_state.result_df
         
-        # Display processing summary
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Total Entries", f"{len(result_df)}")
-        with col2:
-            # Count marked entries
-            marked_entries = result_df['Description'].str.contains('🟨').sum()
-            st.metric("Entries Needing Review", f"{marked_entries}")
-        with col3:
-            auto_classified = len(result_df) - marked_entries
-            percentage = (auto_classified / len(result_df)) * 100 if len(result_df) > 0 else 0
-            st.metric("Auto-Classified Rate", f"{percentage:.1f}%")
+        # Summary metrics
+        marked_entries = result_df['Description'].str.contains('🟨').sum()
+        auto_classified = len(result_df) - marked_entries
+        percentage = (auto_classified / len(result_df)) * 100 if len(result_df) > 0 else 0
         
-        # Preview results
-        st.subheader("Preview Results")
+        st.markdown("""
+        <div class="card">
+            <h3 class="card-title">Results Summary</h3>
+            <div class="metric-row">
+                <div class="metric-card">
+                    <div class="metric-value">{0}</div>
+                    <div class="metric-label">Total Entries</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{1}</div>
+                    <div class="metric-label">Entries Needing Review</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">{2:.1f}%</div>
+                    <div class="metric-label">Auto-Classification Rate</div>
+                </div>
+            </div>
+        """.format(len(result_df), marked_entries, percentage), unsafe_allow_html=True)
+        
+        # Preview section
+        st.markdown("""
+            <h3 class="card-title">Data Preview</h3>
+            <div class="preview-container">
+        """, unsafe_allow_html=True)
         st.dataframe(result_df.head(5), use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
         
-        # Download button
+        # Download section
         to_download = BytesIO()
         result_df.to_excel(to_download, index=False, engine='openpyxl')
         
@@ -574,59 +652,55 @@ if selected_page == "Excel Classifier":
         )
         
         st.session_state.step = 4
-        st.markdown('<div class="status-success">', unsafe_allow_html=True)
-        st.write("✅ Processing complete!")
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("""
+            <div class="status status-success">
+                <strong>✓ Processing complete!</strong> Your file is ready to download.
+            </div>
+        """, unsafe_allow_html=True)
         
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.markdown("</div>", unsafe_allow_html=True)
 
+# --- RECEIPT GENERATOR PAGE ---
 elif selected_page == "Receipt Generator":
-    st.subheader("Receipt Generator")
-    st.markdown('<span class="coming-soon">Coming Soon</span>', unsafe_allow_html=True)
-    
     st.markdown("""
-    This feature will allow you to:
-    - Generate professional receipts from transaction data
-    - Customize receipt templates
-    - Add company logos and signatures
-    - Export receipts in PDF format
-    - Email receipts directly to clients
-    
-    We're working hard to make this available soon!
-    """)
-    
-    # Mockup of the interface
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown('<h3 class="card-title">Receipt Generator Interface</h3>', unsafe_allow_html=True)
-    st.image("https://raw.githubusercontent.com/Daniel43450/aiolos-excel-app/main/Capture.PNG", width=100)
-    st.markdown("Preview of the receipt generator interface (coming soon)")
-    st.markdown('</div>', unsafe_allow_html=True)
+    <div class="card">
+        <h2 class="card-title">Receipt Generator <span class="coming-soon">Coming Soon</span></h2>
+        <p>Generate professional receipts from your transaction data.</p>
+        
+        <div style="display: flex; align-items: center; justify-content: center; padding: 2rem;">
+            <div style="text-align: center;">
+                <img src="https://raw.githubusercontent.com/Daniel43450/aiolos-excel-app/main/Capture.PNG" width="120">
+                <p style="margin-top: 1rem; color: #666; font-size: 0.9rem;">
+                    We're developing this feature to help you create and manage receipts with ease.
+                </p>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
+# --- PAYMENT INSTRUCTIONS PAGE ---
 elif selected_page == "Payment Instructions":
-    st.subheader("Payment Instructions")
-    st.markdown('<span class="coming-soon">Coming Soon</span>', unsafe_allow_html=True)
-    
     st.markdown("""
-    This feature will allow you to:
-    - Create payment instructions for vendors
-    - Track payment status
-    - Generate payment reports
-    - Export payment details for accounting
-    - Schedule recurring payments
-    
-    We're working hard to make this available soon!
-    """)
-    
-    # Mockup of the interface
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown('<h3 class="card-title">Payment Instructions Interface</h3>', unsafe_allow_html=True)
-    st.image("https://raw.githubusercontent.com/Daniel43450/aiolos-excel-app/main/Capture.PNG", width=100)
-    st.markdown("Preview of the payment instructions interface (coming soon)")
-    st.markdown('</div>', unsafe_allow_html=True)
+    <div class="card">
+        <h2 class="card-title">Payment Instructions <span class="coming-soon">Coming Soon</span></h2>
+        <p>Create and track payment instructions for vendors and contractors.</p>
+        
+        <div style="display: flex; align-items: center; justify-content: center; padding: 2rem;">
+            <div style="text-align: center;">
+                <img src="https://raw.githubusercontent.com/Daniel43450/aiolos-excel-app/main/Capture.PNG" width="120">
+                <p style="margin-top: 1rem; color: #666; font-size: 0.9rem;">
+                    This feature will help you manage payment schedules and instructions efficiently.
+                </p>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # --- FOOTER ---
 st.markdown("""
-    <div class="footer">
-        <p>Aiolos Financial Tools © 2025 | Version 1.2.0</p>
-    </div>
+<div class="footer">
+    Aiolos Financial Tools © 2025 • Build 1.2.1
+</div>
 """, unsafe_allow_html=True)
