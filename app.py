@@ -770,7 +770,7 @@ elif selected_page == "Receipt Generator":
             )
             
             client_name = villa_owners.get((project, villa), "")
-                        if client_name:
+            if client_name:
                 st.markdown(f"""
                 <div style="background-color: var(--accent); padding: 0.75rem; border-radius: var(--radius); font-size: 0.9rem;">
                     <strong>Owner:</strong> {client_name}
