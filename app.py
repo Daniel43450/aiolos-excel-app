@@ -3,6 +3,7 @@ import pandas as pd
 import re
 import datetime
 from io import BytesIO
+from docx import Document
 
 # --- UI CONFIG ---
 st.set_page_config(
@@ -486,6 +487,38 @@ st.markdown("""
     .sidebar .sidebar-content {
         background-color: var(--accent);
     }
+    
+    /* Form elements styling */
+    .form-group {
+        margin-bottom: 1.2rem;
+    }
+    
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    /* Info panel */
+    .info-panel {
+        background-color: #f8f9fa; 
+        padding: 1.25rem; 
+        border-radius: 8px;
+        font-size: 0.9rem; 
+        height: 100%; 
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    
+    .info-panel-title {
+        font-weight: 500; 
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+    }
+    
+    .info-panel ul {
+        padding-left: 1.2rem; 
+        margin-bottom: 1rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -562,9 +595,9 @@ if selected_page == "Excel Classifier":
     
     with col2:
         st.markdown("""
-            <div style="background-color: #f8f9fa; padding: 1rem; border-radius: 8px; font-size: 0.9rem;">
-                <p><strong>Format Guide</strong></p>
-                <ul style="padding-left: 1rem; margin-bottom: 0;">
+            <div class="info-panel">
+                <p class="info-panel-title">Format Guide</p>
+                <ul>
                     <li>DIAKOFTI: For plot-based transactions</li>
                     <li>ATHENS: For Athens office transactions</li>
                 </ul>
@@ -664,10 +697,13 @@ if selected_page == "Excel Classifier":
 
 # --- RECEIPT GENERATOR PAGE ---
 elif selected_page == "Receipt Generator":
-    from docx import Document
+    st.markdown("""
+    <div class="card">
+        <h2 class="card-title">Receipt Generator</h2>
+        <p>Generate professional payment receipts for villa owners.</p>
+    """, unsafe_allow_html=True)
 
-    st.markdown("## Receipt Generator")
-
+    # Villa owners data
     villa_owners = {
         ("Y1", "Villa 1"): "George Bezerianos",
         ("Y1", "Villa 2"): "Shelley Furman Assa",
@@ -696,17 +732,71 @@ elif selected_page == "Receipt Generator":
         ("R4", "Villa 1"): "Itah Ella",
     }
 
-    with st.form("receipt_form"):
-        project = st.selectbox("Select Project", sorted(set(k[0] for k in villa_owners)))
-        villa = st.selectbox("Select Villa", sorted(set(k[1] for k in villa_owners if k[0] == project)))
-        client_name = villa_owners.get((project, villa), "")
+    # Track receipt generation state
+    if 'receipt_step' not in st.session_state:
+        st.session_state.receipt_step = 1
+    
+    # Show steps
+    st.markdown("""
+        <ul class="steps">
+            <li class="step-item {0}">Select Villa</li>
+            <li class="step-item {1}">Payment Details</li>
+            <li class="step-item {2}">Generate Receipt</li>
+        </ul>
+    """.format(
+        "step-active" if st.session_state.receipt_step == 1 else "step-complete" if st.session_state.receipt_step > 1 else "",
+        "step-active" if st.session_state.receipt_step == 2 else "step-complete" if st.session_state.receipt_step > 2 else "",
+        "step-active" if st.session_state.receipt_step == 3 else "step-complete" if st.session_state.receipt_step > 3 else ""
+    ), unsafe_allow_html=True)
+    
+    # Main form layout in columns for better arrangement
+    col1, col2 = st.columns([3, 2])
+    
+    with col1:
+        with st.form("receipt_form"):
+            # Villa selection section
+            st.markdown("<p style='font-weight: 500; margin-bottom: 0.5rem;'>Villa Information</p>", unsafe_allow_html=True)
+            project = st.selectbox(
+                "Select Project", 
+                sorted(set(k[0] for k in villa_owners)),
+                help="Choose the project plot"
+            )
+            
+            villa_options = sorted(set(k[1] for k in villa_owners if k[0] == project))
+            villa = st.selectbox(
+                "Select Villa", 
+                villa_options,
+                help="Select the villa number"
+            )
+            
+            client_name = villa_owners.get((project, villa), "")
+                        if client_name:
+                st.markdown(f"""
+                <div style="background-color: var(--accent); padding: 0.75rem; border-radius: var(--radius); font-size: 0.9rem;">
+                    <strong>Owner:</strong> {client_name}
+                </div>
+                """, unsafe_allow_html=True)
 
-        payment_order_number = st.text_input("Payment Order #")
-        sum_euro = st.text_input("Sum (€)")
-        extra_text = st.text_area("Extra Payment Text (optional)", "")
-        submit_btn = st.form_submit_button("Generate Receipt")
+            st.markdown("<p style='font-weight: 500; margin-top: 1.5rem;'>Payment Details</p>", unsafe_allow_html=True)
+            payment_order_number = st.text_input("Payment Order Number")
+            sum_euro = st.text_input("Sum in Euro (€)")
+            extra_text = st.text_area("Extra Payment Text (optional)", "")
+            generate_button = st.form_submit_button("Generate Receipt")
 
-    if submit_btn:
+    with col2:
+        st.markdown("""
+        <div class="info-panel">
+            <p class="info-panel-title">Instructions</p>
+            <ul>
+                <li>Select the villa to auto-fill owner name</li>
+                <li>Enter payment number and amount</li>
+                <li>Click to generate a ready-to-send Word document</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+    if generate_button:
+        st.session_state.receipt_step = 3
         template = Document("default_tempate.docx")
 
         for p in template.paragraphs:
@@ -724,7 +814,12 @@ elif selected_page == "Receipt Generator":
 
         filename = f"Diakofti Village Project - {project} {villa} - Payment order #{payment_order_number}.docx"
 
-        st.success("Receipt ready!")
+        st.markdown("""
+        <div class="status status-success">
+            <strong>✓ Receipt ready!</strong> Download your completed file below.
+        </div>
+        """, unsafe_allow_html=True)
+
         st.download_button(
             label="Download Word Receipt",
             data=buffer,
@@ -732,28 +827,4 @@ elif selected_page == "Receipt Generator":
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
 
-
-# --- PAYMENT INSTRUCTIONS PAGE ---
-elif selected_page == "Payment Instructions":
-    st.markdown("""
-    <div class="card">
-        <h2 class="card-title">Payment Instructions <span class="coming-soon">Coming Soon</span></h2>
-        <p>Create and track payment instructions for vendors and contractors.</p>
-        
-        <div style="display: flex; align-items: center; justify-content: center; padding: 2rem;">
-            <div style="text-align: center;">
-                <img src="https://raw.githubusercontent.com/Daniel43450/aiolos-excel-app/main/Capture.PNG" width="120">
-                <p style="margin-top: 1rem; color: #666; font-size: 0.9rem;">
-                    This feature will help you manage payment schedules and instructions efficiently.
-                </p>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# --- FOOTER ---
-st.markdown("""
-<div class="footer">
-    Aiolos Financial Tools © 2025 • Build 1.2.1
-</div>
-""", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
