@@ -33,6 +33,7 @@ def find_all_plots(description):
     return found
 
 # --- PROCESSING FUNCTIONS ---
+# --- PROCESSING FUNCTIONS ---
 def process_athens_file(df):
     df = df.copy()
     # Fix for date formatting issue
@@ -47,17 +48,18 @@ def process_athens_file(df):
 
         entry = {
             "Date": row['Ημερομηνία'].strftime('%d/%m/%Y') if not pd.isnull(row['Ημερομηνία']) else '',
-            "Income/outcome": "Income" if row['Ποσό συναλλαγής'] > 0 else "Outcome",
-            "Plot": "Diakofti" if "DIAKOFTI" in desc else ("Mobee" if "MOBEE" in desc else "All Projects"),
+            "Income/Outcome": "Income" if row['Ποσό συναλλαγής'] > 0 else "Outcome",
             "Expenses Type": "Soft Cost",
-            "Type": "",
+            "Location": "Diakofti" if "DIAKOFTI" in desc else ("Mobee" if "MOBEE" in desc else "All Projects"),
+            "Project": "",
             "Supplier": "",
+            "Type": "",
             "Description": desc,
-            "In": amount if row['Ποσό συναλλαγής'] > 0 else "",
-            "Out": -amount if row['Ποσό συναλλαγής'] < 0 else "",
+            "Income": amount if row['Ποσό συναλλαγής'] > 0 else "",
+            "Outcome": -amount if row['Ποσό συναλλαγής'] < 0 else "",
             "Total": amount if row['Ποσό συναλλαγής'] > 0 else -amount,
-            "Progressive Ledger Balance": "",
-            "Payment details": "",
+            "Balance": "",
+            "Repayment": "",
             "Original Description": original_desc
         }
 
@@ -111,7 +113,7 @@ def process_athens_file(df):
             entry["Type"] = "Mobee Management"
             entry["Supplier"] = "Kalliforna"
             entry["Description"] = "Management fee"
-            entry["Plot"] = "Mobee"
+            entry["Location"] = "Mobee"
             filled = True
             
         if "ΠΛΗΡΩΜΗ ΕΦΚΑ ΕΡΓΟΔΟΤΙΚΕΣ ΕΙΣΦΟΡΕΣ" in desc:
@@ -138,7 +140,7 @@ def process_athens_file(df):
             entry["Description"] = "Management fee"
 
         if "LEFKES" in desc:
-            entry["Plot"] = "Lefkes"
+            entry["Location"] = "Lefkes"
              
         if "PARKING" in desc:
             entry["Type"] = "Transportation"
@@ -156,7 +158,7 @@ def process_athens_file(df):
             entry["Type"] = "Project Management"
             entry["Supplier"] = "Lefkes Villas"
             entry["Description"] = "Management fee"
-            entry["Plot"] = "Lefkes"
+            entry["Location"] = "Lefkes"
             entry["Expenses Type"] = "Soft cost"
             filled = True
 
@@ -232,12 +234,29 @@ def process_athens_file(df):
         results.append(entry)
 
     result_df = pd.DataFrame(results)
-    # Move Original Description column to the end for export
-    if 'Original Description' in result_df.columns:
-        original_col = result_df.pop('Original Description')
-        result_df.insert(len(result_df.columns), 'Original Description', original_col)
+    
+    # Define the order of columns to match the image
+    column_order = [
+        "Date", 
+        "Income/Outcome", 
+        "Expenses Type", 
+        "Location", 
+        "Project", 
+        "Supplier", 
+        "Type", 
+        "Description", 
+        "Income", 
+        "Outcome", 
+        "Total", 
+        "Balance", 
+        "Repayment",
+        "Original Description"
+    ]
+    
+    # Reorder the columns for the final output
+    result_df = result_df[column_order]
+    
     return result_df
-
 def process_file(df):
     df = df.dropna(subset=['ΠΕΡΙΓΡΑΦΗ'])
     df['ΠΟΣΟ'] = df['ΠΟΣΟ'].astype(str).str.replace('.', '').str.replace(',', '.').astype(float)
