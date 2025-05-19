@@ -76,6 +76,12 @@ def process_athens_file(df):
             entry["Description"] = "F&B"
             filled = True
 
+        if "TEKA" in desc and round(amount, 2) == 76.66:
+            entry["Supplier"] = "Worker 1"
+            entry["Type"] = "Operation cost"
+            entry["Description"] = "TEKA"
+            filled = True
+
         if "BAGELDB" in desc:
             entry["Type"] = "Marketing"
             entry["Supplier"] = "BagelDB"
