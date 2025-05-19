@@ -76,10 +76,16 @@ def process_athens_file(df):
             entry["Description"] = "Website"
             filled = True
 
-          if "MANAGEMENT FEE" in desc or row['Ποσό συναλλαγής'] in [-1810, 1810, -1810.00, 1810.00]:
+         if "MANAGEMENT FEE" in desc or row['Ποσό συναλλαγής'] in [-1810, 1810, -1810.00, 1810.00]:
             entry["Type"] = "Mobee Management"
             entry["Supplier"] = "Konstantinos"
             entry["Description"] = "Management fee"
+            filled = True
+
+         if "ΠΡΟΜΗΘΕΙΕΣ ΕΞΟΔΑ" in desc and amount <= 5:
+            entry["Type"] = "Bank fees"
+            entry["Supplier"] = "Bank"
+            entry["Description"] = "Bank fees"
             filled = True
 
          if "PLAKENTIA" in desc:
