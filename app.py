@@ -76,6 +76,12 @@ def process_athens_file(df):
             entry["Description"] = "Website"
             filled = True
 
+         if "PLAKENTIA" in desc:
+            entry["Type"] = "Transportation"
+            entry["Supplier"] = "General"
+            entry["Description"] = "Metro"
+            filled = True
+
          if "MICROSOFT" in desc:
             entry["Type"] = "Project Management"
             entry["Supplier"] = "Microsoft"
