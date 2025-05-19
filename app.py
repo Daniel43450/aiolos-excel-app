@@ -88,6 +88,13 @@ def process_athens_file(df):
             entry["Description"] = "Website"
             filled = True
 
+        if abs(row['Ποσό συναλλαγής']) == 256.41 and row['Ποσό συναλλαγής'] < 0:
+            entry["Type"] = "Tax"
+            entry["Supplier"] = "Authorities"
+            entry["Description"] = "EFKA"
+            entry["Repayment"] = "UDI EFKA"
+            filled = True
+            
         if "MANAGEMENT FEE" in desc or row['Ποσό συναλλαγής'] in [-1810, 1810, -1810.00, 1810.00]:
             entry["Type"] = "Mobee Management"
             entry["Supplier"] = "Konstantinos"
