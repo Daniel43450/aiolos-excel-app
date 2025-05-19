@@ -28,7 +28,7 @@ PLOTS = [
 def find_all_plots(description):
     found = []
     for plot in PLOTS:
-        if re.search(rf"(?<!\\w){re.escape(plot)}(?!\\w)", description):
+        if re.search(rf"(?<!\w){re.escape(plot)}(?!\w)", description):
             found.append(plot)
     return found
 
@@ -43,9 +43,9 @@ def process_athens_file(df):
     for _, row in df.iterrows():
         original_desc = str(row['Περιγραφή'])
         desc = original_desc.upper()
-        
-        amount = abs(float(str(row['Ποσό συναλλαγής']).replace('.', '').replace(',', '.')))
 
+        try:
+            amount = abs(float(str(row['Ποσό συναλλαγής']).replace('.', '').replace(',', '.')))
         except Exception:
             amount = 0.0
 
@@ -66,6 +66,7 @@ def process_athens_file(df):
         }
 
         filled = False
+
 
         # Rule: Detect bank fee entries by keywords and small amounts
         if any(word in desc for word in ["DINNER", "FOOD", "CAFE", "COFFEE", "LUNCH", "BREAKFAST", "ΦΑΓΗΤΟ", "ΕΣΤΙΑΤΟΡΙΟ", "ΚΑΦΕ"]):
