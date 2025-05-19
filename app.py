@@ -95,6 +95,12 @@ except Exception:
             entry["Description"] = "Bank fees"
             filled = True
 
+         if "AIOLOS DIAKOFTI" in desc and 1520 <= amount <= 1570:
+            entry["Supplier"] = "Aiolos Diakofti"
+            entry["Type"] = "Operation cost"
+            entry["Description"] = "Reimbursement of expenses"
+            filled = True
+
          if ("ΚΑΛΛΙΦΡΟΝΑ 3" in desc or "ΚΑΛΛΙΦΡΟΝΑ3" in desc) and row['Ποσό συναλλαγής'] > 0:
             entry["Type"] = "Mobee Management"
             entry["Supplier"] = "Kalliforna"
