@@ -51,7 +51,7 @@ def process_athens_file(df):
             "Income/Outcome": "Income" if row['Ποσό συναλλαγής'] > 0 else "Outcome",
             "Expenses Type": "Soft Cost",
             "Location": "Diakofti" if "DIAKOFTI" in desc else ("Mobee" if "MOBEE" in desc else "All Projects"),
-            "Project": "",
+            "Project": "Diakofti" if "DIAKOFTI" in desc else ("Mobee" if "MOBEE" in desc else "All Projects"),
             "Supplier": "",
             "Type": "",
             "Description": desc,
