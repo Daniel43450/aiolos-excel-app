@@ -44,12 +44,7 @@ def process_athens_file(df):
         original_desc = str(row['Περιγραφή'])
         desc = original_desc.upper()
         
-        try:
-            import locale
-            locale.setlocale(locale.LC_NUMERIC, 'el_GR.UTF-8')  # Greek format
-            amount = abs(locale.atof(str(row['Ποσό συναλλαγής'])))
-        except Exception:
-            amount = 0.0
+        amount = abs(float(str(row['Ποσό συναλλαγής']).replace('.', '').replace(',', '.')))
 
         entry = {
             "Date": row['Ημερομηνία'].strftime('%d/%m/%Y') if not pd.isnull(row['Ημερομηνία']) else '',
