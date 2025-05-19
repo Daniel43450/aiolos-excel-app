@@ -112,6 +112,12 @@ def process_athens_file(df):
             entry["Description"] = "Management fee"
             entry["Plot"] = "Mobee"
             filled = True
+            
+        if "ΠΛΗΡΩΜΗ ΕΦΚΑ ΕΡΓΟΔΟΤΙΚΕΣ ΕΙΣΦΟΡΕΣ" in desc:
+            entry["Type"] = "Tax"
+            entry["Supplier"] = "Authorities"
+            entry["Description"] = "EFKA"
+            filled = True
 
         if "PLAKENTIA" in desc:
             entry["Type"] = "Transportation"
