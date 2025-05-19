@@ -68,67 +68,67 @@ except Exception:
             "Original Description": original_desc
         }
 
-        filled = False
+             filled = False
 
-        # Rule: Detect bank fee entries by keywords and small amounts
         if any(word in desc for word in ["DINNER", "FOOD", "CAFE", "COFFEE", "LUNCH", "BREAKFAST", "ΦΑΓΗΤΟ", "ΕΣΤΙΑΤΟΡΙΟ", "ΚΑΦΕ"]):
             entry["Type"] = "F&B"
             entry["Supplier"] = "General"
             entry["Description"] = "F&B"
             filled = True
 
-         if "BAGELDB" in desc:
+        if "BAGELDB" in desc:
             entry["Type"] = "Marketing"
             entry["Supplier"] = "BagelDB"
             entry["Description"] = "Website"
             filled = True
 
-         if "MANAGEMENT FEE" in desc or row['Ποσό συναλλαγής'] in [-1810, 1810, -1810.00, 1810.00]:
+        if "MANAGEMENT FEE" in desc or row['Ποσό συναλλαγής'] in [-1810, 1810, -1810.00, 1810.00]:
             entry["Type"] = "Mobee Management"
             entry["Supplier"] = "Konstantinos"
             entry["Description"] = "Management fee"
             filled = True
 
-         if "ΠΡΟΜΗΘΕΙΕΣ ΕΞΟΔΑ" in desc and amount <= 5:
+        if "ΠΡΟΜΗΘΕΙΕΣ ΕΞΟΔΑ" in desc and amount <= 5:
             entry["Type"] = "Bank fees"
             entry["Supplier"] = "Bank"
             entry["Description"] = "Bank fees"
             filled = True
 
-         if "AIOLOS DIAKOFTI" in desc and 1520 <= amount <= 1570:
+        if "AIOLOS DIAKOFTI" in desc and 1520 <= amount <= 1570:
             entry["Supplier"] = "Aiolos Diakofti"
             entry["Type"] = "Operation cost"
             entry["Description"] = "Reimbursement of expenses"
             filled = True
 
-         if ("ΚΑΛΛΙΦΡΟΝΑ 3" in desc or "ΚΑΛΛΙΦΡΟΝΑ3" in desc) and row['Ποσό συναλλαγής'] > 0:
+        if ("ΚΑΛΛΙΦΡΟΝΑ 3" in desc or "ΚΑΛΛΙΦΡΟΝΑ3" in desc) and row['Ποσό συναλλαγής'] > 0:
             entry["Type"] = "Mobee Management"
             entry["Supplier"] = "Kalliforna"
             entry["Description"] = "Management fee"
             entry["Plot"] = "Mobee"
             filled = True
 
-         if "PLAKENTIA" in desc:
+        if "PLAKENTIA" in desc:
             entry["Type"] = "Transportation"
             entry["Supplier"] = "General"
             entry["Description"] = "Metro"
             filled = True
 
-         if "MICROSOFT" in desc:
+        if "MICROSOFT" in desc:
             entry["Type"] = "Project Management"
             entry["Supplier"] = "Microsoft"
             entry["Description"] = "Office expenses"
             filled = True
 
-         if "LEFKES VILLAS PROJECT MONOPROSOPI" in desc:
+        if "LEFKES VILLAS PROJECT MONOPROSOPI" in desc:
             entry["Supplier"] = "Lefkes Villas"
             entry["Type"] = "Project Management"
             entry["Description"] = "Management fee"
+            filled = True
 
-         if "LEFKES" in desc:
+        if "LEFKES" in desc:
             entry["Plot"] = "Lefkes"
-             
-         if "PARKING" in desc:
+
+        if "PARKING" in desc:
             entry["Type"] = "Transportation"
             entry["Supplier"] = "Parking"
             entry["Description"] = "Parking"
@@ -208,11 +208,6 @@ except Exception:
             entry["Description"] = "Gas station"
             filled = True
 
-        if any(word in desc for word in ["ΠΡΟΜΗΘ", "ΜΗΝ", "ΠΑΡ", "ΕΞΟΔΑ"]) and amount <= 5:
-            entry["Type"] = "Bank"
-            entry["Supplier"] = "Bank"
-            entry["Description"] = "Bank fees"
-            filled = True
 
         if not filled:
             entry["Description"] = f"🟨 {entry['Description']}"
