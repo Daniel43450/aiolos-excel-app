@@ -43,14 +43,13 @@ def process_athens_file(df):
     for _, row in df.iterrows():
         original_desc = str(row['Περιγραφή'])
         desc = original_desc.upper()
-        import locale
-locale.setlocale(locale.LC_NUMERIC, 'el_GR.UTF-8')  # קובע פורמט יווני
-
-try:
-    amount = abs(locale.atof(str(row['Ποσό συναλλαγής'])))
-except Exception:
-    amount = 0.0
-
+        
+        try:
+            import locale
+            locale.setlocale(locale.LC_NUMERIC, 'el_GR.UTF-8')  # Greek format
+            amount = abs(locale.atof(str(row['Ποσό συναλλαγής'])))
+        except Exception:
+            amount = 0.0
 
         entry = {
             "Date": row['Ημερομηνία'].strftime('%d/%m/%Y') if not pd.isnull(row['Ημερομηνία']) else '',
@@ -68,8 +67,9 @@ except Exception:
             "Original Description": original_desc
         }
 
-             filled = False
+        filled = False
 
+        # Rule: Detect bank fee entries by keywords and small amounts
         if any(word in desc for word in ["DINNER", "FOOD", "CAFE", "COFFEE", "LUNCH", "BREAKFAST", "ΦΑΓΗΤΟ", "ΕΣΤΙΑΤΟΡΙΟ", "ΚΑΦΕ"]):
             entry["Type"] = "F&B"
             entry["Supplier"] = "General"
@@ -123,11 +123,10 @@ except Exception:
             entry["Supplier"] = "Lefkes Villas"
             entry["Type"] = "Project Management"
             entry["Description"] = "Management fee"
-            filled = True
 
         if "LEFKES" in desc:
             entry["Plot"] = "Lefkes"
-
+             
         if "PARKING" in desc:
             entry["Type"] = "Transportation"
             entry["Supplier"] = "Parking"
@@ -208,7 +207,11 @@ except Exception:
             entry["Description"] = "Gas station"
             filled = True
 
-
+        if any(word in desc for word in ["ΠΡΟΜΗΘ", "ΜΗΝ", "ΠΑΡ", "ΕΞΟΔΑ"]) and amount <= 5:
+            entry["Type"] = "Bank"
+            entry["Supplier"] = "Bank"
+            entry["Description"] = "Bank fees"
+            filled = True
         if not filled:
             entry["Description"] = f"🟨 {entry['Description']}"
 
