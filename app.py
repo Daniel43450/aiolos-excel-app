@@ -231,38 +231,12 @@ def process_athens_file(df):
 
         results.append(entry)
 
-        result_df = pd.DataFrame(results)
-
-    # העתק את plot גם ל-Location וגם ל-Project
-    result_df["Location"] = result_df["Plot"]
-    result_df["Project"] = result_df["Plot"]
-
-    # תיקון סכומים - הזזת נקודה (חלוקה ב-10)
-    for col in ["In", "Out", "Total"]:
-        result_df[col] = pd.to_numeric(result_df[col], errors='coerce') / 10
-
-    # שינוי שמות עמודות לסופיות
-    result_df.rename(columns={
-        "In": "Income",
-        "Out": "Outcome",
-        "Total": "Total",
-        "Progressive Ledger Balance": "Balance",
-        "Payment details": "Repayment",
-        "Original Description": "Remarks"
-    }, inplace=True)
-
-    # סדר העמודות לפי התמונה ששלחת
-    ordered_cols = [
-        "Date", "Income/outcome", "Expenses Type", "Location", "Project",
-        "Supplier", "Type", "Description", "Income", "Outcome", "Total",
-        "Balance", "Repayment", "Remarks"
-    ]
-
-    # סידור סופי
-    result_df = result_df[[col for col in ordered_cols if col in result_df.columns]]
-
+    result_df = pd.DataFrame(results)
+    # Move Original Description column to the end for export
+    if 'Original Description' in result_df.columns:
+        original_col = result_df.pop('Original Description')
+        result_df.insert(len(result_df.columns), 'Original Description', original_col)
     return result_df
-
 
 def process_file(df):
     df = df.dropna(subset=['ΠΕΡΙΓΡΑΦΗ'])
