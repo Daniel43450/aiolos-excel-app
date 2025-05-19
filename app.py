@@ -88,6 +88,13 @@ def process_athens_file(df):
             entry["Description"] = "Bank fees"
             filled = True
 
+         if ("ΚΑΛΛΙΦΡΟΝΑ 3" in desc or "ΚΑΛΛΙΦΡΟΝΑ3" in desc) and row['Ποσό συναλλαγής'] > 0:
+            entry["Type"] = "Mobee Management"
+            entry["Supplier"] = "Kalliforna"
+            entry["Description"] = "Management fee"
+            entry["Plot"] = "Mobee"
+            filled = True
+
          if "PLAKENTIA" in desc:
             entry["Type"] = "Transportation"
             entry["Supplier"] = "General"
