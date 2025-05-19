@@ -31,6 +31,8 @@ def find_all_plots(description):
         if re.search(rf"(?<!\\w){re.escape(plot)}(?!\\w)", description):
             found.append(plot)
     return found
+
+# --- PROCESSING FUNCTIONS ---
 def process_athens_file(df):
     df = df.copy()
     # Fix for date formatting issue
@@ -45,24 +47,23 @@ def process_athens_file(df):
 
         entry = {
             "Date": row['Ημερομηνία'].strftime('%d/%m/%Y') if not pd.isnull(row['Ημερομηνία']) else '',
-            "Income/Outcome": "Income" if row['Ποσό συναλλαγής'] > 0 else "Outcome",
+            "Income/outcome": "Income" if row['Ποσό συναλλαγής'] > 0 else "Outcome",
+            "Plot": "Diakofti" if "DIAKOFTI" in desc else ("Mobee" if "MOBEE" in desc else "All Projects"),
             "Expenses Type": "Soft Cost",
-            "Location": "",
-            "Project": "",
-            "Supplier": "",
             "Type": "",
+            "Supplier": "",
             "Description": desc,
-            "Income": amount if row['Ποσό συναλλαγής'] > 0 else "",
-            "Outcome": -amount if row['Ποσό συναλλαγής'] < 0 else "",
+            "In": amount if row['Ποσό συναλλαγής'] > 0 else "",
+            "Out": -amount if row['Ποσό συναλλαγής'] < 0 else "",
             "Total": amount if row['Ποσό συναλλαγής'] > 0 else -amount,
-            "Balance": "",
-            "Repayment": "",
+            "Progressive Ledger Balance": "",
             "Payment details": "",
             "Original Description": original_desc
         }
 
         filled = False
 
+        # Rule: Detect bank fee entries by keywords and small amounts
         if any(word in desc for word in ["DINNER", "FOOD", "CAFE", "COFFEE", "LUNCH", "BREAKFAST", "ΦΑΓΗΤΟ", "ΕΣΤΙΑΤΟΡΙΟ", "ΚΑΦΕ"]):
             entry["Type"] = "F&B"
             entry["Supplier"] = "General"
@@ -87,7 +88,7 @@ def process_athens_file(df):
             entry["Description"] = "EFKA"
             entry["Repayment"] = "UDI EFKA"
             filled = True
-
+            
         if "MANAGEMENT FEE" in desc or row['Ποσό συναλλαγής'] in [-1810, 1810, -1810.00, 1810.00]:
             entry["Type"] = "Mobee Management"
             entry["Supplier"] = "Konstantinos"
@@ -110,9 +111,9 @@ def process_athens_file(df):
             entry["Type"] = "Mobee Management"
             entry["Supplier"] = "Kalliforna"
             entry["Description"] = "Management fee"
-            entry["Project"] = "Mobee"
+            entry["Plot"] = "Mobee"
             filled = True
-
+            
         if "ΠΛΗΡΩΜΗ ΕΦΚΑ ΕΡΓΟΔΟΤΙΚΕΣ ΕΙΣΦΟΡΕΣ" in desc:
             entry["Type"] = "Tax"
             entry["Supplier"] = "Authorities"
@@ -137,8 +138,8 @@ def process_athens_file(df):
             entry["Description"] = "Management fee"
 
         if "LEFKES" in desc:
-            entry["Project"] = "Lefkes"
-
+            entry["Plot"] = "Lefkes"
+             
         if "PARKING" in desc:
             entry["Type"] = "Transportation"
             entry["Supplier"] = "Parking"
@@ -155,7 +156,7 @@ def process_athens_file(df):
             entry["Type"] = "Project Management"
             entry["Supplier"] = "Lefkes Villas"
             entry["Description"] = "Management fee"
-            entry["Project"] = "Lefkes"
+            entry["Plot"] = "Lefkes"
             entry["Expenses Type"] = "Soft cost"
             filled = True
 
@@ -231,30 +232,10 @@ def process_athens_file(df):
         results.append(entry)
 
     result_df = pd.DataFrame(results)
-
-    # סדר עמודות לפי הדרוש בתמונה
-    column_order = [
-        "Date",
-        "Income/Outcome",
-        "Expenses Type",
-        "Location",
-        "Project",
-        "Supplier",
-        "Type",
-        "Description",
-        "Income",
-        "Outcome",
-        "Total",
-        "Balance",
-        "Repayment",
-        "Payment details",
-        "Original Description"
-    ]
-
-    # ודא שהעמודות קיימות לפני שאתה ממיין
-    existing_columns = [col for col in column_order if col in result_df.columns]
-    result_df = result_df[existing_columns]
-
+    # Move Original Description column to the end for export
+    if 'Original Description' in result_df.columns:
+        original_col = result_df.pop('Original Description')
+        result_df.insert(len(result_df.columns), 'Original Description', original_col)
     return result_df
 
 def process_file(df):
