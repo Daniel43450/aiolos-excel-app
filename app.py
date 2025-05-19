@@ -88,6 +88,12 @@ def process_athens_file(df):
             entry["Description"] = "Office expenses"
             filled = True
 
+         if "PARKING" in desc:
+            entry["Type"] = "Transportation"
+            entry["Supplier"] = "Parking"
+            entry["Description"] = "Parking"
+            filled = True
+
         if "ECOVIS" in desc:
             entry["Type"] = "Ecovis"
             entry["Supplier"] = "Accountant"
