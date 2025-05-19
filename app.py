@@ -70,6 +70,12 @@ def process_athens_file(df):
             entry["Description"] = "F&B"
             filled = True
 
+         if "BAGELDB" in desc:
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "BagelDB"
+            entry["Description"] = "Website"
+            filled = True
+
          if "MICROSOFT" in desc:
             entry["Type"] = "Project Management"
             entry["Supplier"] = "Microsoft"
