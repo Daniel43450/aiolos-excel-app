@@ -94,6 +94,14 @@ def process_athens_file(df):
             entry["Description"] = "Office expenses"
             filled = True
 
+         if "LEFKES VILLAS PROJECT MONOPROSOPI" in desc:
+            entry["Supplier"] = "Lefkes Villas"
+            entry["Type"] = "Project Management"
+            entry["Description"] = "Management fee"
+
+         if "LEFKES" in desc:
+            entry["Plot"] = "Lefkes"
+             
          if "PARKING" in desc:
             entry["Type"] = "Transportation"
             entry["Supplier"] = "Parking"
