@@ -45,7 +45,6 @@ def process_athens_file(df):
         desc = original_desc.upper()
         amount = abs(float(str(row['Ποσό συναλλαγής']).replace(',', '.')))
 
-        
         entry = {
             "Date": row['Ημερομηνία'].strftime('%d/%m/%Y') if not pd.isnull(row['Ημερομηνία']) else '',
             "Income/outcome": "Income" if row['Ποσό συναλλαγής'] > 0 else "Outcome",
@@ -227,40 +226,16 @@ def process_athens_file(df):
             entry["Description"] = "Bank fees"
             filled = True
 
-                # אם לא סווג אוטומטית
         if not filled:
             entry["Description"] = f"🟨 {entry['Description']}"
-
-        # השוואת Location & Project ל-Plot
-        entry["Location"] = entry["Project"] = entry["Plot"]
 
         results.append(entry)
 
     result_df = pd.DataFrame(results)
-
-    # תיקון סכומים - הזזת נקודה עשרונית שמאלה
-    for col in ["In", "Out", "Total"]:
-        result_df[col] = pd.to_numeric(result_df[col], errors='coerce') / 10
-
-    # שינוי שמות עמודות סופיות
-    result_df.rename(columns={
-        "In": "Income",
-        "Out": "Outcome",
-        "Total": "Total",
-        "Progressive Ledger Balance": "Balance",
-        "Payment details": "Repayment",
-        "Original Description": "Remarks"
-    }, inplace=True)
-
-    # סדר סופי לפי תמונה
-    ordered_cols = [
-        "Income/outcome", "Expenses Type", "Location", "Project",
-        "Supplier", "Type", "Description", "Income", "Outcome",
-        "Total", "Balance", "Repayment", "Remarks"
-    ]
-
-    result_df = result_df[[col for col in ordered_cols if col in result_df.columns]]
-
+    # Move Original Description column to the end for export
+    if 'Original Description' in result_df.columns:
+        original_col = result_df.pop('Original Description')
+        result_df.insert(len(result_df.columns), 'Original Description', original_col)
     return result_df
 
 def process_file(df):
