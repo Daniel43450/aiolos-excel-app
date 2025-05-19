@@ -43,7 +43,7 @@ def process_athens_file(df):
     for _, row in df.iterrows():
         original_desc = str(row['Περιγραφή'])
         desc = original_desc.upper()
-        amount = abs(float(str(row['Ποσό συναλλαγής']).replace('.', '').replace(',', '.')))
+        amount = abs(float(str(row['Ποσό συναλλαγής']).replace(',', '.')))
 
         entry = {
             "Date": row['Ημερομηνία'].strftime('%d/%m/%Y') if not pd.isnull(row['Ημερομηνία']) else '',
