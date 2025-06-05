@@ -300,6 +300,36 @@ def process_file(df):
             entry["Supplier"] = "Bank"
             entry["Description"] = "Bank fees"
             filled = True
+            
+        if "EDEN" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Accommodation"
+            entry["Description"] = "Hotel"
+            filled = True
+        if "ALL PLOTS MARKETING" in desc:
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "Marketing"
+            entry["Description"] = "Marketing Services fee"
+            filled = True
+        if "CALEN" in desc or "HARD COST" in desc:
+            entry["Expenses Type"] = "Hard Cost"
+            entry["Type"] = "Contractor"
+            entry["Supplier"] = "Calen"
+            entry["Description"] = "Construction works"
+            filled = True
+        if "SUPERVISION" in desc:
+            entry["Type"] = "Supervision"
+            entry["Supplier"] = "TAG ARCHITECTS"
+            entry["Description"] = "Supervision"
+            filled = True
+        if "HOLIDAYS TEL" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Flight"
+            filled = True
+
+
+
         if any(term in desc for term in ["ACCOUNTING", "BOOKKEEP", "ECOVIS"]) and not any(word in desc for word in ["YAG", "TAG"]):
             entry["Type"] = "Accounting"
             entry["Supplier"] = "Ecovis"
