@@ -300,81 +300,92 @@ def process_file(df):
             entry["Supplier"] = "Bank"
             entry["Description"] = "Bank fees"
             filled = True
-            
+
         if "EDEN" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Accommodation"
             entry["Description"] = "Hotel"
             filled = True
+
         if "ALL PLOTS MARKETING" in desc:
             entry["Type"] = "Marketing"
             entry["Supplier"] = "Marketing"
             entry["Description"] = "Marketing Services fee"
             filled = True
+
         if "CALEN" in desc or "HARD COST" in desc:
             entry["Expenses Type"] = "Hard Cost"
             entry["Type"] = "Contractor"
             entry["Supplier"] = "Calen"
             entry["Description"] = "Construction works"
             filled = True
+
         if "SUPERVISION" in desc:
             entry["Type"] = "Supervision"
             entry["Supplier"] = "TAG ARCHITECTS"
             entry["Description"] = "Supervision"
             filled = True
+
         if "HOLIDAYS TEL" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Transportation"
             entry["Description"] = "Flight"
             filled = True
 
-
-
         if any(term in desc for term in ["ACCOUNTING", "BOOKKEEP", "ECOVIS"]) and not any(word in desc for word in ["YAG", "TAG"]):
             entry["Type"] = "Accounting"
             entry["Supplier"] = "Ecovis"
             entry["Description"] = "Accountant monthly fees"
             filled = True
+
         if "GAS" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Transportation"
             entry["Description"] = "Gas station"
             filled = True
+
         if "DRAKAKIS" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Drakakis Tours"
             entry["Description"] = "Car rent fees"
             filled = True
+
         if "FLIGHT" in desc or "AEGEAN" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Transportation"
             entry["Description"] = "Flight"
             filled = True
+
         if any(word in desc for word in ["DINNER", "FOOD", "CAFE", "COFFEE", "LUNCH", "BREAKFAST"]):
             entry["Type"] = "General"
             entry["Supplier"] = "F&B"
             entry["Description"] = "F&B"
             filled = True
+
         if "GOOGLE" in desc:
             entry["Type"] = "Marketing"
             entry["Supplier"] = "Marketing"
             entry["Description"] = "Marketing Services fee"
             filled = True
+
         if "CRM" in desc:
             entry["Type"] = "Marketing"
             entry["Supplier"] = "reWire"
             entry["Description"] = "CRM"
             filled = True
+
         if "UBER" in desc or "TAXI" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Transportation"
             entry["Description"] = "Athens Taxi"
             filled = True
+
         if "OPENAI" in desc:
             entry["Type"] = "General"
             entry["Supplier"] = "Office expenses"
             entry["Description"] = "Office expense"
             filled = True
+
         if "TAG" in desc:
             entry["Type"] = "Architect"
             entry["Supplier"] = "TAG ARCHITECTS"
@@ -383,16 +394,19 @@ def process_file(df):
             else:
                 entry["Description"] = "Planning"
             filled = True
+
         if "OASA" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Transportation"
             entry["Description"] = "Transportation"
             filled = True
+
         if any(term in desc for term in ["MANAGEMENT", "MANAG.", "MGMT", "MNGMT"]) and row['ΠΟΣΟ'] in [-1550, -1550.00, -1550.0, 1550.00, 1550.0, 1550]:
             entry["Type"] = "Worker 1"
             entry["Supplier"] = "Aiolos Athens"
             entry["Description"] = "management fees"
             filled = True
+
         if any(term in desc for term in ["COSM", "COSMOTE", "PHONE"]):
             entry["Type"] = "Utility Bills"
             entry["Supplier"] = "Cosmote"
@@ -401,7 +415,6 @@ def process_file(df):
 
         if not filled:
             entry["Description"] = f"🟨 {entry['Description']}"
-
         results.append(entry)
 
     df = pd.DataFrame(results)
