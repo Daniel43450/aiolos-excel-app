@@ -295,7 +295,7 @@ def process_file(df):
 
         filled = False
 
-        if "COM POO" in desc:
+        if "COM POI" in desc or "COM POO" in desc:
             entry["Type"] = "Bank"
             entry["Supplier"] = "Bank"
             entry["Description"] = "Bank fees"
