@@ -90,6 +90,13 @@ def process_athens_file(df):
             entry["Description"] = "Car rental"
             entry["Plot"] = "All Projects"
             filled = True
+            
+        if any(word in desc for word in ["BAKERY", "CAFFE", "CAFE", "EAT", "BEVERAGE", "PIZA", "BURGER"]):
+            entry["Type"] = "F&B"
+            entry["Supplier"] = "General"
+            entry["Description"] = "F&B"
+            filled = True
+
 
         if abs(row['Ποσό συναλλαγής']) == 256.41 and row['Ποσό συναλλαγής'] < 0:
             entry["Type"] = "Tax"
