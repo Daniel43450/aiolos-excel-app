@@ -214,7 +214,7 @@ def process_athens_file(df):
             entry["Description"] = "Salary"
             filled = True
 
-        if "AEGEANWEB" in desc:
+        if any(word in desc for word in ["AEGEANWEB", "AEGEAN", "OLYMPIC", "SKY", "ISRAIR", "WIZZ"]):
             entry["Type"] = "Transportation"
             entry["Supplier"] = "General"
             entry["Description"] = "Flight"
