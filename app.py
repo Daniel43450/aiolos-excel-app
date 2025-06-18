@@ -105,7 +105,12 @@ def process_athens_file(df):
             entry["Supplier"] = "General"
             entry["Description"] = "F&B"
             filled = True
-
+            
+        if round(amount, 2) == 496.00 and any(word in desc for word in ["ECOVIS", "FEE", "FEES"]):
+            entry["Supplier"] = "Accountant"
+            entry["Type"] = "Ecovis"
+            entry["Description"] = "Accountant monthly fees"
+            filled = True
 
         if abs(row['Ποσό συναλλαγής']) == 256.41 and row['Ποσό συναλλαγής'] < 0:
             entry["Type"] = "Tax"
