@@ -91,6 +91,15 @@ def process_athens_file(df):
             entry["Plot"] = "All Projects"
             filled = True
             
+        if "COSMOTE" in desc:
+            entry["Location"] = "Mobee"
+            entry["Project"] = "Mobee"
+            entry["Supplier"] = "Cosmote"
+            entry["Type"] = "Project Management"
+            entry["Description"] = "Office expenses"
+            filled = True
+
+            
         if any(word in desc for word in ["BAKERY", "CAFFE", "CAFE", "EAT", "BEVERAGE", "PIZA", "BURGER"]):
             entry["Type"] = "F&B"
             entry["Supplier"] = "General"
