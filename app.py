@@ -83,6 +83,13 @@ def process_athens_file(df):
             entry["Supplier"] = "BagelDB"
             entry["Description"] = "Website"
             filled = True
+            
+        if any(word in desc for word in ["AVIS", "HERTZ", "SIXT", "CAR RENTAL"]):
+            entry["Type"] = "Transportation"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Car rental"
+            entry["Plot"] = "All Projects"
+            filled = True
 
         if abs(row['Ποσό συναλλαγής']) == 256.41 and row['Ποσό συναλλαγής'] < 0:
             entry["Type"] = "Tax"
