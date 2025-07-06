@@ -169,7 +169,13 @@ def process_athens_file(df):
 
         if "LEFKES" in desc:
             entry["Location"] = "Lefkes"
-             
+
+        if "BEN SHAHAR" in desc:
+            entry["Supplier"] = "Ben Shahar"
+            entry["Type"] = "Project Management"
+            entry["Description"] = "Management fee"
+            entry["Location"] = "Lefkes"
+                 
         if "PARKING" in desc:
             entry["Type"] = "Transportation"
             entry["Supplier"] = "Parking"
