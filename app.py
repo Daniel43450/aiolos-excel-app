@@ -422,7 +422,7 @@ def process_file(df):
             entry["Plot"] = "G2"
             filled = True
 
-        if "RF38908618000033404445701" in desc:
+        if "RF38908618000033404445701" in desc or "RF389086180000334044" in desc:  
             entry["Type"] = "Utility Bills"
             entry["Supplier"] = "Municipality"
             entry["Description"] = "Electricity"
