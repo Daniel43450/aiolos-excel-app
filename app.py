@@ -415,6 +415,27 @@ def process_file(df):
             entry["Description"] = "CRM"
             filled = True
 
+        if "RF91908618000033404472101" in desc:
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            entry["Plot"] = "G2"
+            filled = True
+
+        if "RF38908618000033404445701" in desc:
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            entry["Plot"] = "Y3"
+            filled = True
+
+        if "RF91908618000033404472101" in desc:
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            entry["Plot"] = "R4"
+            filled = True
+
         if "UBER" in desc or "TAXI" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Transportation"
