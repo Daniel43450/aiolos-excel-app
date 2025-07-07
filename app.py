@@ -366,6 +366,13 @@ def process_file(df):
             entry["Description"] = "Flight"
             filled = True
 
+        if "EL AL" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Flight"
+            filled = True
+
+
         if any(term in desc for term in ["ACCOUNTING", "BOOKKEEP", "ECOVIS"]) and not any(word in desc for word in ["YAG", "TAG"]):
             entry["Type"] = "Accounting"
             entry["Supplier"] = "Ecovis"
