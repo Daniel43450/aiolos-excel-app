@@ -415,7 +415,7 @@ def process_file(df):
             entry["Description"] = "CRM"
             filled = True
 
-        if "RF91908618000033404472101" in desc:
+        if "RF91908618000033404472101" in desc or "PROT-RF549086180000334" in desc:
             entry["Type"] = "Utility Bills"
             entry["Supplier"] = "Municipality"
             entry["Description"] = "Electricity"
@@ -429,7 +429,7 @@ def process_file(df):
             entry["Plot"] = "Y3"
             filled = True
 
-        if "RF91908618000033404472101" in desc:
+        if "RF91908618000033404472101" in desc or "PROT-919086180000334" in desc:
             entry["Type"] = "Utility Bills"
             entry["Supplier"] = "Municipality"
             entry["Description"] = "Electricity"
