@@ -463,6 +463,14 @@ def process_file(df):
             entry["Description"] = "Transportation"
             filled = True
 
+        if "ΔΗΜΟ-RF369029090000097" in desc:
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Water"
+            entry["Plot"] = "Y3"
+            filled = True
+
+
         if any(term in desc for term in ["MANAGEMENT", "MANAG.", "MGMT", "MNGMT"]) and row['ΠΟΣΟ'] in [-1550, -1550.00, -1550.0, 1550.00, 1550.0, 1550]:
             entry["Type"] = "Worker 1"
             entry["Supplier"] = "Aiolos Athens"
