@@ -410,6 +410,49 @@ def process_file(df):
             entry["Description"] = "F&B"
             filled = True
 
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
+            "villa 1" in desc or "Villa 1" in desc or "VILLA 1" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 1"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
+            "villa 2" in desc or "Villa 2" in desc or "VILLA 2" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 2"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
+            "villa 3" in desc or "Villa 3" in desc or "VILLA 3" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 3"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
+            "villa 4" in desc or "Villa 4" in desc or "VILLA 4" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 4"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
+            "villa 5" in desc or "Villa 5" in desc or "VILLA 5" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 5"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
+            "villa 6" in desc or "Villa 6" in desc or "VILLA 6" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 6"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+
         if "GOOGLE" in desc:
             entry["Type"] = "Marketing"
             entry["Supplier"] = "Marketing"
