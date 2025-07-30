@@ -398,7 +398,7 @@ def process_file(df):
             entry["Description"] = "Flight"
             filled = True
 
-        if "TONY S" in desc or "Tony S" in desc or "tony s" in desc:
+        if "TONY S" in desc or "Tony S" in desc or "tony s" in desc or "eat" in desc or "EAT" in desc:
             entry["Type"] = "General"
             entry["Supplier"] = "F&B"
             entry["Description"] = "F&B"
