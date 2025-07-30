@@ -424,6 +424,15 @@ def process_file(df):
             entry["Description"] = "Broker fees"
             filled = True
 
+        if "RF919086180000334" in desc:
+            entry["Plot"] = "R4"
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            filled = True
+
+
         if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
             "villa 3" in desc or "Villa 3" in desc or "VILLA 3" in desc):
             entry["Type"] = "Brokers"
