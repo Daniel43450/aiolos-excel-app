@@ -361,17 +361,6 @@ def process_file(df):
             entry["Description"] = "Supervision"
             filled = True
 
-        desc = str(row["Περιγραφή Συναλλαγής"]).upper()
-
-        # Rule: Broker fees by Villa number (1–9)
-        for i in range(1, 10):
-            if f"VILLA {i}" in desc and "BROKER" in desc:
-                entry["Type"] = "Brokers"
-                entry["Supplier"] = f"Buyer Villa {i}"
-                entry["Description"] = "Broker fees"
-                filled = True
-                break
-
         if "HOLIDAYS TEL" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Transportation"
