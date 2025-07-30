@@ -471,7 +471,7 @@ def process_file(df):
             filled = True
 
 
-        if any(term in desc for term in ["MANAGEMENT", "MANAG.", "MGMT", "MNGMT"]) and row['ΠΟΣΟ'] in [-1550, -1550.00, -1550.0, 1550.00, 1550.0, 1550]:
+        if any(term in desc for term in ["MANAGEMENT", "MANAG.", "MGMT", "MNGMT"]) and row['ΠΟΣΟ'] in [-1550, -1550.00, -1550.0, 1550.00, 1550.0, 2055, 2055.0, 2057.0, 1550]:
             entry["Type"] = "Worker 1"
             entry["Supplier"] = "Aiolos Athens"
             entry["Description"] = "management fees"
