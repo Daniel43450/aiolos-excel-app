@@ -291,6 +291,7 @@ def process_athens_file(df):
     result_df = result_df[column_order]
     
     return result_df
+    
 def process_file(df):
     df = df.dropna(subset=['ΠΕΡΙΓΡΑΦΗ'])
     df['ΠΟΣΟ'] = df['ΠΟΣΟ'].astype(str).str.replace('.', '').str.replace(',', '.').astype(float)
@@ -359,6 +360,17 @@ def process_file(df):
             entry["Supplier"] = "TAG ARCHITECTS"
             entry["Description"] = "Supervision"
             filled = True
+
+        desc = str(row["Περιγραφή Συναλλαγής"]).upper()
+
+        # Rule: Broker fees by Villa number (1–9)
+        for i in range(1, 10):
+            if f"VILLA {i}" in desc and "BROKER" in desc:
+                entry["Type"] = "Brokers"
+                entry["Supplier"] = f"Buyer Villa {i}"
+                entry["Description"] = "Broker fees"
+                filled = True
+                break
 
         if "HOLIDAYS TEL" in desc:
             entry["Type"] = "Project management"
