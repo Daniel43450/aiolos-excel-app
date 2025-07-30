@@ -397,6 +397,12 @@ def process_file(df):
             entry["Description"] = "Flight"
             filled = True
 
+        if any(word in desc for word in ["AEGEANWEB", "AEGEAN", "OLYMPIC", "SKY", "ISRAIR", "WIZZ"]):
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Flight"
+            filled = True
+
         if any(word in desc for word in ["DINNER", "FOOD", "CAFE", "COFFEE", "LUNCH", "BREAKFAST"]):
             entry["Type"] = "General"
             entry["Supplier"] = "F&B"
