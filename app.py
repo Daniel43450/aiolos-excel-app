@@ -105,6 +105,13 @@ def process_athens_file(df):
             entry["Supplier"] = "General"
             entry["Description"] = "F&B"
             filled = True
+
+        if any(keyword in desc for keyword in ["WEBCCDOMAINCOM", "webccdomaincom", "Webccdomaincom"]):
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "BagelDB"
+            entry["Description"] = "Website"
+            entry["Repayment"] = "DOMAIN"
+            filled = True
             
         if round(amount, 2) == 496.00 and any(word in desc for word in ["ECOVIS", "FEE", "FEES"]):
             entry["Supplier"] = "Accountant"
