@@ -83,6 +83,12 @@ def process_athens_file(df):
             entry["Supplier"] = "BagelDB"
             entry["Description"] = "Website"
             filled = True
+
+        if any(variant in desc for variant in ["AP MICHALOPOULOS SIA", "Ap Michalopoulos Sia", "ap michalopoulos sia"]):
+            entry["Type"] = "F&B"
+            entry["Supplier"] = "General"
+            entry["Description"] = "F&B"
+            filled = True
             
         if any(word in desc for word in ["AVIS", "HERTZ", "SIXT", "CAR RENTAL"]):
             entry["Type"] = "Transportation"
