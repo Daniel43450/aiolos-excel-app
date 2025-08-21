@@ -33,7 +33,6 @@ def find_all_plots(description):
     return found
 
 # --- PROCESSING FUNCTIONS ---
-# --- PROCESSING FUNCTIONS ---
 def process_athens_file(df):
     df = df.copy()
     # Fix for date formatting issue
@@ -384,6 +383,12 @@ def process_file(df):
             entry["Type"] = "Project management"
             entry["Supplier"] = "Transportation"
             entry["Description"] = "Flight"
+            filled = True
+
+        if any(keyword in desc.upper() for keyword in ["FACEBOOK", "FACEBK", "FB.ME", "META"]):
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "Marketing"
+            entry["Description"] = "Marketing Services fee"
             filled = True
 
 
