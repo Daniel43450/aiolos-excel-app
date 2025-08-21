@@ -328,32 +328,231 @@ def process_diakofti_file(df):
         
         # ============================================
         # 🔴 DIAKOFTI RULES - ADD YOUR RULES HERE
-        # ============================================
-        # Example rules (add your actual rules below):
-        
-        # Rule 1: Bank fees
         if "COM POI" in desc or "COM POO" in desc:
             entry["Type"] = "Bank"
             entry["Supplier"] = "Bank"
             entry["Description"] = "Bank fees"
             filled = True
-        
-        # Rule 2: Marketing
-        if "FACEBOOK" in desc or "GOOGLE" in desc:
+
+        if "EDEN" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Accommodation"
+            entry["Description"] = "Hotel"
+            filled = True
+
+        if "ALL PLOTS MARKETING" in desc:
             entry["Type"] = "Marketing"
             entry["Supplier"] = "Marketing"
             entry["Description"] = "Marketing Services fee"
             filled = True
-        
-        # 🔴 ADD MORE DIAKOFTI RULES HERE
-        # if "KEYWORD" in desc:
-        #     entry["Type"] = "Your Type"
-        #     entry["Supplier"] = "Your Supplier"
-        #     entry["Description"] = "Your Description"
-        #     filled = True
-        
-        # ============================================
-        # END OF DIAKOFTI RULES
+
+        if "CALEN" in desc or "HARD COST" in desc:
+            entry["Expenses Type"] = "Hard Cost"
+            entry["Type"] = "Contractor"
+            entry["Supplier"] = "Calen"
+            entry["Description"] = "Construction works"
+            filled = True
+
+        if "SUPERVISION" in desc:
+            entry["Type"] = "Supervision"
+            entry["Supplier"] = "TAG ARCHITECTS"
+            entry["Description"] = "Supervision"
+            filled = True
+
+        if "HOLIDAYS TEL" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Flight"
+            filled = True
+
+        if "EL AL" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Flight"
+            filled = True
+
+        if any(keyword in desc.upper() for keyword in ["FACEBOOK", "FACEBK", "FB.ME", "META"]):
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "Marketing"
+            entry["Description"] = "Marketing Services fee"
+            filled = True
+
+
+        if any(term in desc for term in ["ACCOUNTING", "BOOKKEEP", "ECOVIS"]) and not any(word in desc for word in ["YAG", "TAG"]):
+            entry["Type"] = "Accounting"
+            entry["Supplier"] = "Ecovis"
+            entry["Description"] = "Accountant monthly fees"
+            filled = True
+
+        if "GAS" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Gas station"
+            filled = True
+
+        if "DRAKAKIS" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Drakakis Tours"
+            entry["Description"] = "Car rent fees"
+            filled = True
+
+        if "FLIGHT" in desc or "AEGEAN" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Flight"
+            filled = True
+
+        if "TONY S" in desc or "Tony S" in desc or "tony s" in desc or "eat" in desc or "EAT" in desc:
+            entry["Type"] = "General"
+            entry["Supplier"] = "F&B"
+            entry["Description"] = "F&B"
+            filled = True
+
+
+        if any(word in desc for word in ["AEGEANWEB", "AEGEAN", "OLYMPIC", "SKY", "ISRAIR", "WIZZ"]):
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Flight"
+            filled = True
+
+        if any(word in desc for word in ["DINNER", "FOOD", "CAFE", "COFFEE", "LUNCH", "BREAKFAST"]):
+            entry["Type"] = "General"
+            entry["Supplier"] = "F&B"
+            entry["Description"] = "F&B"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
+            "villa 1" in desc or "Villa 1" in desc or "VILLA 1" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 1"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
+            "villa 2" in desc or "Villa 2" in desc or "VILLA 2" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 2"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if "RF919086180000334" in desc:
+            entry["Plot"] = "R4"
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            filled = True
+
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
+            "villa 3" in desc or "Villa 3" in desc or "VILLA 3" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 3"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
+            "villa 4" in desc or "Villa 4" in desc or "VILLA 4" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 4"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
+            "villa 5" in desc or "Villa 5" in desc or "VILLA 5" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 5"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
+            "villa 6" in desc or "Villa 6" in desc or "VILLA 6" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 6"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+
+        if "GOOGLE" in desc:
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "Marketing"
+            entry["Description"] = "Marketing Services fee"
+            filled = True
+
+        if "CRM" in desc:
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "reWire"
+            entry["Description"] = "CRM"
+            filled = True
+
+        if "RF91908618000033404472101" in desc or "PROT-RF549086180000334" in desc:
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            entry["Plot"] = "G2"
+            filled = True
+
+        if "RF38908618000033404445701" in desc or "RF389086180000334044" in desc:  
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            entry["Plot"] = "Y3"
+            filled = True
+
+        if "RF91908618000033404472101" in desc or "PROT-919086180000334" in desc:
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            entry["Plot"] = "R4"
+            filled = True
+
+        if "UBER" in desc or "TAXI" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Athens Taxi"
+            filled = True
+
+        if "OPENAI" in desc:
+            entry["Type"] = "General"
+            entry["Supplier"] = "Office expenses"
+            entry["Description"] = "Office expense"
+            filled = True
+
+        if "TAG" in desc:
+            entry["Type"] = "Architect"
+            entry["Supplier"] = "TAG ARCHITECTS"
+            if "SUP" in desc:
+                entry["Description"] = "Supervision"
+            else:
+                entry["Description"] = "Planning"
+            filled = True
+
+        if "OASA" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Transportation"
+            filled = True
+
+        if "ΔΗΜΟ-RF369029090000097" in desc:
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Water"
+            entry["Plot"] = "Y3"
+            filled = True
+
+
+        if any(term in desc for term in ["MANAGEMENT", "MANAG.", "MGMT", "MNGMT"]) and row['ΠΟΣΟ'] in [-1550, -1550.00, -1550.0, 1550.00, 1550.0, 2055, 2055.0, 2057.0, 1550]:
+            entry["Type"] = "Worker 1"
+            entry["Supplier"] = "Aiolos Athens"
+            entry["Description"] = "management fees"
+            filled = True
+
+        if any(term in desc for term in ["COSM", "COSMOTE", "PHONE"]):
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Cosmote"
+            entry["Description"] = "Phone bill"
+            filled = True
+       
         # ============================================
         
         if not filled:
@@ -399,6 +598,216 @@ def process_athens_file(df):
         
         # ============================================
         # 🔵 ATHENS RULES - ADD YOUR RULES HERE
+        if any(word in desc for word in ["DINNER", "FOOD", "CAFE", "COFFEE", "LUNCH", "BREAKFAST", "ΦΑΓΗΤΟ", "ΕΣΤΙΑΤΟΡΙΟ", "ΚΑΦΕ"]):
+            entry["Type"] = "F&B"
+            entry["Supplier"] = "General"
+            entry["Description"] = "F&B"
+            filled = True
+
+        if "TEKA" in desc and round(amount, 2) == 76.66:
+            entry["Supplier"] = "Worker 1"
+            entry["Type"] = "Operation cost"
+            entry["Description"] = "TEKA"
+            filled = True
+
+        if "BAGELDB" in desc:
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "BagelDB"
+            entry["Description"] = "Website"
+            filled = True
+
+        if any(variant in desc for variant in ["AP MICHALOPOULOS SIA", "Ap Michalopoulos Sia", "ap michalopoulos sia"]):
+            entry["Type"] = "F&B"
+            entry["Supplier"] = "General"
+            entry["Description"] = "F&B"
+            filled = True
+           
+        if any(word in desc for word in ["AVIS", "HERTZ", "SIXT", "CAR RENTAL"]):
+            entry["Type"] = "Transportation"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Car rental"
+            entry["Plot"] = "All Projects"
+            filled = True
+           
+        if "COSMOTE" in desc:
+            entry["Location"] = "Mobee"
+            entry["Project"] = "Mobee"
+            entry["Supplier"] = "Cosmote"
+            entry["Type"] = "Project Management"
+            entry["Description"] = "Office expenses"
+            filled = True
+
+           
+        if any(word in desc for word in ["BAKERY", "CAFFE", "CAFE", "EAT", "BEVERAGE", "PIZA", "BURGER"]):
+            entry["Type"] = "F&B"
+            entry["Supplier"] = "General"
+            entry["Description"] = "F&B"
+            filled = True
+
+        if any(keyword in desc for keyword in ["WEBCCDOMAINCOM", "webccdomaincom", "Webccdomaincom"]):
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "BagelDB"
+            entry["Description"] = "Website"
+            entry["Repayment"] = "DOMAIN"
+            filled = True
+           
+        if round(amount, 2) == 496.00 and any(word in desc for word in ["ECOVIS", "FEE", "FEES"]):
+            entry["Supplier"] = "Accountant"
+            entry["Type"] = "Ecovis"
+            entry["Description"] = "Accountant monthly fees"
+            filled = True
+
+        if abs(row['Ποσό συναλλαγής']) == 256.41 and row['Ποσό συναλλαγής'] < 0:
+            entry["Type"] = "Tax"
+            entry["Supplier"] = "Authorities"
+            entry["Description"] = "EFKA"
+            entry["Repayment"] = "UDI EFKA"
+            filled = True
+           
+        if "MANAGEMENT FEE" in desc or row['Ποσό συναλλαγής'] in [-1810, 1810, -1810.00, 1810.00]:
+            entry["Type"] = "Mobee Management"
+            entry["Supplier"] = "Konstantinos"
+            entry["Description"] = "Management fee"
+            filled = True
+
+        if "ΠΡΟΜΗΘΕΙΕΣ ΕΞΟΔΑ" in desc and amount <= 5:
+            entry["Type"] = "Bank fees"
+            entry["Supplier"] = "Bank"
+            entry["Description"] = "Bank fees"
+            filled = True
+
+        if "AIOLOS DIAKOFTI" in desc and 1520 <= amount <= 1570:
+            entry["Supplier"] = "Aiolos Diakofti"
+            entry["Type"] = "Operation cost"
+            entry["Description"] = "Reimbursement of expenses"
+            filled = True
+
+        if ("ΚΑΛΛΙΦΡΟΝΑ 3" in desc or "ΚΑΛΛΙΦΡΟΝΑ3" in desc) and row['Ποσό συναλλαγής'] > 0:
+            entry["Type"] = "Mobee Management"
+            entry["Supplier"] = "Kalliforna"
+            entry["Description"] = "Management fee"
+            entry["Location"] = "Mobee"
+            filled = True
+           
+        if "ΠΛΗΡΩΜΗ ΕΦΚΑ ΕΡΓΟΔΟΤΙΚΕΣ ΕΙΣΦΟΡΕΣ" in desc:
+            entry["Type"] = "Tax"
+            entry["Supplier"] = "Authorities"
+            entry["Description"] = "EFKA"
+            filled = True
+
+        if "PLAKENTIA" in desc:
+            entry["Type"] = "Transportation"
+            entry["Supplier"] = "General"
+            entry["Description"] = "Metro"
+            filled = True
+
+        if "MICROSOFT" in desc:
+            entry["Type"] = "Project Management"
+            entry["Supplier"] = "Microsoft"
+            entry["Description"] = "Office expenses"
+            filled = True
+
+        if "LEFKES VILLAS PROJECT MONOPROSOPI" in desc:
+            entry["Supplier"] = "Lefkes Villas"
+            entry["Type"] = "Project Management"
+            entry["Description"] = "Management fee"
+
+        if "LEFKES" in desc:
+            entry["Location"] = "Lefkes"
+
+        if "BEN SHAHAR" in desc:
+            entry["Supplier"] = "Ben Shahar"
+            entry["Type"] = "Project Management"
+            entry["Description"] = "Management fee"
+            entry["Location"] = "Lefkes"
+                 
+        if "PARKING" in desc:
+            entry["Type"] = "Transportation"
+            entry["Supplier"] = "Parking"
+            entry["Description"] = "Parking"
+            filled = True
+
+        if "ECOVIS" in desc:
+            entry["Type"] = "Ecovis"
+            entry["Supplier"] = "Accountant"
+            entry["Description"] = "Accountant monthly fees"
+            filled = True
+
+        if row['Ποσό συναλλαγής'] == 4960:
+            entry["Type"] = "Project Management"
+            entry["Supplier"] = "Lefkes Villas"
+            entry["Description"] = "Management fee"
+            entry["Location"] = "Lefkes"
+            entry["Expenses Type"] = "Soft cost"
+            filled = True
+
+        if "HAREL" in desc:
+            entry["Type"] = "Project Management"
+            entry["Supplier"] = "General"
+            entry["Description"] = "Office expenses"
+            filled = True
+
+        if "SHELL" in desc:
+            entry["Type"] = "Transportation"
+            entry["Supplier"] = "General"
+            entry["Description"] = "Gas station"
+            filled = True
+
+        if "OASA" in desc:
+            entry["Type"] = "Transportation"
+            entry["Supplier"] = "General"
+            entry["Description"] = "Metro"
+            filled = True
+
+        if "WORKER 1" in desc:
+            entry["Type"] = "Operation cost"
+            entry["Supplier"] = "Worker 1"
+            entry["Description"] = "Salary"
+            filled = True
+
+        if any(word in desc for word in ["AEGEANWEB", "AEGEAN", "OLYMPIC", "SKY", "ISRAIR", "WIZZ"]):
+            entry["Type"] = "Transportation"
+            entry["Supplier"] = "General"
+            entry["Description"] = "Flight"
+            filled = True
+
+        if "PARKAROUND" in desc:
+            entry["Type"] = "Transportation"
+            entry["Supplier"] = "Parking"
+            entry["Description"] = "Parking"
+            filled = True
+
+        if any(word in desc for word in ["ATTIKI"]):
+            entry["Type"] = "Transportation"
+            entry["Supplier"] = "General"
+            entry["Description"] = "Toll road"
+            filled = True
+
+        if any(word in desc for word in ["UBER", "UBR"]):
+            entry["Type"] = "Transportation"
+            entry["Supplier"] = "General"
+            entry["Description"] = "Uber"
+            filled = True
+
+        if "GOOGLE" in desc:
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "Google"
+            entry["Description"] = "Campaign"
+            filled = True
+
+        if "PETRELION" in desc:
+            entry["Type"] = "Transportation"
+            entry["Supplier"] = "General"
+            entry["Description"] = "Gas station"
+            filled = True
+
+        if any(word in desc for word in ["ΠΡΟΜΗΘ", "ΜΗΝ", "ΠΑΡ", "ΕΞΟΔΑ"]) and amount <= 5:
+            entry["Type"] = "Bank"
+            entry["Supplier"] = "Bank"
+            entry["Description"] = "Bank fees"
+            filled = True
+
+
         
 
         # ============================================
