@@ -1179,7 +1179,14 @@ with tab2:
                 
                 # עדיין שמור גם כ-last_payment לתאימות לאחור
                 st.session_state.last_payment = payment_instruction
-                
+                # Persist to disk so history survives refresh/close
+                try:
+                    with open("payment_instructions_db.json", "w", encoding="utf-8") as f:
+                        json.dump(st.session_state.payment_instructions_db, f, ensure_ascii=False, indent=2)
+                except Exception as e:
+                    st.warning(f"Could not persist payment instructions: {e}")
+
+        
                 st.markdown('<div class="success-msg">✅ Payment instruction generated successfully!</div>', unsafe_allow_html=True)
                 
                 st.download_button(
