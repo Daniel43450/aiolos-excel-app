@@ -1163,14 +1163,45 @@ with tab2:
 # ============================================
 # TAB 3: INVOICES
 # ============================================
-# ============================================
-# TAB 3: INVOICES  -> Receipt of Funds Generator
-# ============================================
+
 with tab3:
     st.markdown('<div class="info-card">', unsafe_allow_html=True)
     st.markdown("### 🧾 Receipt of Funds Generator")
     
-    # ---------- Helpers for state ----------
+    # ---------- Persistence helpers for Payment Instructions ----------
+    PI_DB_FILE = "payment_instructions_db.json"
+
+    def _load_payment_db():
+        try:
+            if os.path.exists(PI_DB_FILE):
+                with open(PI_DB_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    return data if isinstance(data, list) else []
+        except Exception:
+            pass
+        return []
+
+    def _save_payment_db(data):
+        try:
+            with open(PI_DB_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            st.warning(f"Could not persist payment instructions: {e}")
+
+    # Bootstrap session state from disk or sync to disk
+    if 'payment_instructions_db' not in st.session_state:
+        st.session_state.payment_instructions_db = _load_payment_db()
+    else:
+        # אם יש נתונים בזיכרון נטען אותם לדיסק כדי להבטיח התמדה
+        if st.session_state.payment_instructions_db:
+            _save_payment_db(st.session_state.payment_instructions_db)
+        else:
+            # אם אין בזיכרון ננסה לטעון מהדיסק
+            disk_data = _load_payment_db()
+            if disk_data:
+                st.session_state.payment_instructions_db = disk_data
+
+    # ---------- Helpers for form state ----------
     def _all_projects():
         return sorted(set(k[0] for k in VILLA_OWNERS))
 
@@ -1178,43 +1209,54 @@ with tab3:
         return sorted(set(k[1] for k in VILLA_OWNERS if k[0] == project))
 
     def _ensure_form_state_defaults():
-        # init once
+        # init project
         if 'receipt_project' not in st.session_state:
-            st.session_state.receipt_project = _all_projects()[0]
+            all_proj = _all_projects()
+            st.session_state.receipt_project = all_proj[0] if all_proj else ""
+
+        # init villa
         if 'receipt_villa' not in st.session_state:
-            st.session_state.receipt_villa = _villas_for(st.session_state.receipt_project)[0]
+            villas = _villas_for(st.session_state.receipt_project)
+            st.session_state.receipt_villa = villas[0] if villas else ""
+
+        # init text fields
         if 'receipt_payment_order' not in st.session_state:
             st.session_state.receipt_payment_order = ""
         if 'receipt_amount' not in st.session_state:
             st.session_state.receipt_amount = ""
-        if 'receipt_date' not in st.session_state:
-            st.session_state.receipt_date = datetime.date.today()
         if 'receipt_extra_text' not in st.session_state:
             st.session_state.receipt_extra_text = ""
+
+        # init date
+        if 'receipt_date' not in st.session_state or not isinstance(st.session_state.receipt_date, datetime.date):
+            st.session_state.receipt_date = datetime.date.today()
 
     def _load_into_form_from_instruction(instr):
         # Fill widget state directly from selected instruction
         st.session_state.receipt_project = instr.get('project', _all_projects()[0]) or _all_projects()[0]
-        # Make sure villa exists for project
         villas = _villas_for(st.session_state.receipt_project)
-        v = instr.get('villa') if instr.get('villa') in villas else villas[0]
+        v = instr.get('villa') if instr.get('villa') in villas else (villas[0] if villas else "")
         st.session_state.receipt_villa = v
         st.session_state.receipt_payment_order = str(instr.get('payment_order', ''))
         st.session_state.receipt_amount = str(instr.get('amount', ''))
-        st.session_state.receipt_date = datetime.date.today()
+        st.session_state.receipt_date = datetime.date.today()  # תמיד להיום
         st.session_state.receipt_extra_text = instr.get('notes', '')
 
     def _clear_form():
-        first_project = _all_projects()[0]
-        st.session_state.receipt_project = first_project
-        st.session_state.receipt_villa = _villas_for(first_project)[0]
-        st.session_state.receipt_payment_order = ""
-        st.session_state.receipt_amount = ""
-        st.session_state.receipt_date = datetime.date.today()
-        st.session_state.receipt_extra_text = ""
-        # Also clear any loaded instruction
+        # נקה את כל מפתחות הטופס כדי שהאתחול ימלא ערכים חוקיים מחדש
+        for k in [
+            "receipt_project",
+            "receipt_villa",
+            "receipt_payment_order",
+            "receipt_amount",
+            "receipt_date",
+            "receipt_extra_text",
+            "load_into_form",
+        ]:
+            if k in st.session_state:
+                st.session_state.pop(k)
         if 'selected_payment_instruction' in st.session_state:
-            del st.session_state.selected_payment_instruction
+            st.session_state.pop('selected_payment_instruction')
 
     def _find_template_path():
         for pth in ["Receipt_of_Funds.docx", "/mnt/data/Receipt_of_Funds.docx"]:
@@ -1223,7 +1265,7 @@ with tab3:
         return None
 
     def _fill_template_docx(template_path, mapping):
-        # Using python-docx: replacing paragraph & table text, then re-apply bold on title
+        from docx import Document
         doc = Document(template_path)
 
         # paragraphs
@@ -1290,6 +1332,7 @@ with tab3:
             with cols_row[7]:
                 if st.button("🗑️", key=f"delete_pi_{actual_idx}", help="Delete this payment instruction"):
                     st.session_state.payment_instructions_db.pop(actual_idx)
+                    _save_payment_db(st.session_state.payment_instructions_db)  # persist deletion
                     st.success("Payment instruction deleted!")
                     st.rerun()
         st.markdown("---")
@@ -1303,7 +1346,6 @@ with tab3:
         st.session_state.load_into_form = False
         st.markdown('<div class="success-msg">✅ Payment instruction loaded! Fields filled automatically.</div>', unsafe_allow_html=True)
     elif 'last_payment' in st.session_state and not any(st.session_state.get(k) for k in ['selected_payment_instruction','load_into_form']):
-        # Optional hint if nothing loaded but there is a recent payment
         st.markdown('<div class="info-msg">📌 Recent payment instruction detected! You can load it from history above.</div>', unsafe_allow_html=True)
 
     # ---------- Form UI ----------
@@ -1311,21 +1353,24 @@ with tab3:
     with col1:
         st.markdown("### 📝 Receipt of Funds Details")
 
-        # Project select (value from state)
         st.selectbox(
             "Project",
             _all_projects(),
             key="receipt_project"
         )
 
-        # Sync villa options for current project
         villa_options_receipt = _villas_for(st.session_state.receipt_project)
-        if st.session_state.receipt_villa not in villa_options_receipt:
-            st.session_state.receipt_villa = villa_options_receipt[0]
+        if not villa_options_receipt:
+            st.session_state.receipt_villa = ""
+            villa_options_display = [""]
+        else:
+            if st.session_state.receipt_villa not in villa_options_receipt:
+                st.session_state.receipt_villa = villa_options_receipt[0]
+            villa_options_display = villa_options_receipt
 
         st.selectbox(
             "Villa",
-            villa_options_receipt,
+            villa_options_display,
             key="receipt_villa"
         )
 
@@ -1402,7 +1447,7 @@ with tab3:
                 doc.save(buffer)
                 buffer.seek(0)
 
-                # filename with two spaces before client_name (as requested)
+                # filename with two spaces before client_name
                 filename = f"{rp} - Receipt of Funds {rpo} -  {rc}.docx"
 
                 # Save a record so TAB 4 shows it
@@ -1436,7 +1481,6 @@ with tab3:
             st.warning("⚠️ Please fill in Payment Order Number and Amount")
     
     st.markdown('</div>', unsafe_allow_html=True)
-
 
 # ============================================
 # TAB 4: RECEIPTS DATABASE
