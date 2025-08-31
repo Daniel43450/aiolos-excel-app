@@ -1163,16 +1163,14 @@ with tab2:
 # ============================================
 # TAB 3: INVOICES
 # ============================================
-# TAB 3: INVOICES
-# ============================================
 with tab3:
     st.markdown('<div class="info-card">', unsafe_allow_html=True)
-    st.markdown("### 🧾 Receipt of Funds Generator")
+    st.markdown("### 🧾 Invoice Generator")
     
     # הצג היסטוריה של הוראות תשלום אם יש
     if st.session_state.payment_instructions_db:
         st.markdown("### 📋 Payment Instructions History")
-        st.markdown('<div class="info-msg">💡 Select a payment instruction to auto-fill the receipt form</div>', unsafe_allow_html=True)
+        st.markdown('<div class="info-msg">💡 Select a payment instruction to auto-fill the invoice form</div>', unsafe_allow_html=True)
         
         # יצירת טבלת היסטוריה עם כפתורים
         cols_history = st.columns([0.5, 1, 1.5, 1.5, 1, 1, 0.5, 0.5])
@@ -1255,151 +1253,125 @@ with tab3:
     col1, col2 = st.columns([3, 2])
     
     with col1:
-        st.markdown("### 📝 Receipt of Funds Details")
-        # Receipt details
-        receipt_project = st.selectbox(
+        st.markdown("### 📝 Invoice Details")
+        # Invoice details
+        invoice_project = st.selectbox(
             "Project",
             sorted(set(k[0] for k in VILLA_OWNERS)),
             index=sorted(set(k[0] for k in VILLA_OWNERS)).index(default_project) if default_project else 0,
-            key="receipt_project"
+            key="invoice_project"
         )
         
-        villa_options_receipt = sorted(set(k[1] for k in VILLA_OWNERS if k[0] == receipt_project))
-        receipt_villa = st.selectbox(
+        villa_options_invoice = sorted(set(k[1] for k in VILLA_OWNERS if k[0] == invoice_project))
+        invoice_villa = st.selectbox(
             "Villa",
-            villa_options_receipt,
-            index=villa_options_receipt.index(default_villa) if default_villa and default_villa in villa_options_receipt else 0,
-            key="receipt_villa"
+            villa_options_invoice,
+            index=villa_options_invoice.index(default_villa) if default_villa and default_villa in villa_options_invoice else 0,
+            key="invoice_villa"
         )
         
-        receipt_client = VILLA_OWNERS.get((receipt_project, receipt_villa), "")
-        if receipt_client:
-            st.markdown(f'<div class="info-msg">👤 <strong>Client:</strong> {receipt_client}</div>', unsafe_allow_html=True)
+        invoice_client = VILLA_OWNERS.get((invoice_project, invoice_villa), "")
+        if invoice_client:
+            st.markdown(f'<div class="info-msg">👤 <strong>Client:</strong> {invoice_client}</div>', unsafe_allow_html=True)
         
-        receipt_payment_order = st.text_input("Payment Order Number", value=default_payment_order, placeholder="001", key="receipt_payment_order")
-        receipt_amount = st.text_input("Amount (€)", value=default_amount, placeholder="5000", key="receipt_amount")
-        receipt_date = st.date_input("Date of Receipt", value=datetime.date.today(), key="receipt_date")
-        receipt_extra_text = st.text_area("Extra Receipt Text (Optional)", value=default_notes, 
-                                        placeholder="Additional information about the payment...", 
-                                        help="This text will appear in the receipt. Leave empty if not needed.",
-                                        key="receipt_extra_text")
+        invoice_number = st.text_input("Invoice Number", value=default_payment_order, placeholder="INV-001", key="invoice_number")
+        invoice_amount = st.text_input("Amount (€)", value=default_amount, placeholder="5000", key="invoice_amount")
+        invoice_date = st.date_input("Invoice Date", value=datetime.date.today(), key="invoice_date")
+        invoice_notes = st.text_area("Notes/Description", value=default_notes, placeholder="Payment received for...", key="invoice_notes")
         
         # כפתור לניקוי הטופס
-        if st.button("🔄 Clear Form", use_container_width=True, key="clear_receipt_form"):
+        if st.button("🔄 Clear Form", use_container_width=True, key="clear_invoice_form"):
             if 'selected_payment_instruction' in st.session_state:
                 del st.session_state.selected_payment_instruction
             st.rerun()
     
     with col2:
-        st.markdown("### 📊 Receipt Preview")
-        if receipt_payment_order and receipt_amount:
+        st.markdown("### 📊 Invoice Preview")
+        if invoice_number and invoice_amount:
             st.markdown(f"""
             <div style="background: white; padding: 1.5rem; border-radius: 12px; border: 2px solid #e0e0e0; text-align: left;">
-                <h4 style="color: #1e3c72; margin-bottom: 1rem;">🧾 Receipt of Funds Preview</h4>
-                <p><strong>To:</strong> {receipt_client}</p>
-                <p><strong>Project:</strong> {receipt_project}</p>
-                <p><strong>Villa #:</strong> {receipt_villa}</p>
-                <p><strong>Payment Order:</strong> {receipt_payment_order}</p>
-                <p><strong>Date:</strong> {receipt_date}</p>
-                <p><strong>Amount:</strong> <span style="color: #28a745; font-weight: bold;">€{receipt_amount}</span></p>
-                {f'<p><strong>Extra Text:</strong> {receipt_extra_text[:50]}{"..." if len(receipt_extra_text) > 50 else ""}</p>' if receipt_extra_text else ""}
+                <h4 style="color: #1e3c72; margin-bottom: 1rem;">🧾 Invoice Preview</h4>
+                <p><strong>Invoice #:</strong> {invoice_number}</p>
+                <p><strong>Date:</strong> {invoice_date}</p>
+                <p><strong>Client:</strong> {invoice_client}</p>
+                <p><strong>Project:</strong> {invoice_project} - {invoice_villa}</p>
+                <p><strong>Amount:</strong> <span style="color: #28a745; font-weight: bold;">€{invoice_amount}</span></p>
+                {f'<p><strong>Notes:</strong> {invoice_notes[:50]}{"..." if len(invoice_notes) > 50 else ""}</p>' if invoice_notes else ""}
             </div>
             """, unsafe_allow_html=True)
         else:
             st.markdown("""
             <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 12px; border: 2px dashed #dee2e6; text-align: center;">
-                <h4 style="color: #6c757d;">📄 Receipt Preview</h4>
+                <h4 style="color: #6c757d;">📄 Invoice Preview</h4>
                 <p style="color: #6c757d;">Fill in the details to see preview</p>
             </div>
             """, unsafe_allow_html=True)
     
-    # Generate receipt button
-    if st.button("🧾 Generate Receipt of Funds", use_container_width=True, key="generate_receipt"):
-        if receipt_payment_order and receipt_amount:
-            try:
-                # Note: You'll need to have the template file
-                template = Document("Receipt_of_Funds.docx")
-                
-                # Replace placeholders in paragraphs
-                for p in template.paragraphs:
-                    p.text = p.text.replace("{{client_name}}", receipt_client)
-                    p.text = p.text.replace("{{plot}}", receipt_project)
-                    p.text = p.text.replace("{{villa_no}}", receipt_villa)
-                    p.text = p.text.replace("{{payment_order_number}}", receipt_payment_order)
-                    p.text = p.text.replace("{{sum}}", receipt_amount)
-                    p.text = p.text.replace("{{date}}", str(receipt_date))
-                    p.text = p.text.replace("{{Extra Receipt text}}", receipt_extra_text if receipt_extra_text else "")
-                
-                # Replace placeholders in tables (if any)
-                for table in template.tables:
-                    for row in table.rows:
-                        for cell in row.cells:
-                            for p in cell.paragraphs:
-                                p.text = p.text.replace("{{client_name}}", receipt_client)
-                                p.text = p.text.replace("{{plot}}", receipt_project)
-                                p.text = p.text.replace("{{villa_no}}", receipt_villa)
-                                p.text = p.text.replace("{{payment_order_number}}", receipt_payment_order)
-                                p.text = p.text.replace("{{sum}}", receipt_amount)
-                                p.text = p.text.replace("{{date}}", str(receipt_date))
-                                p.text = p.text.replace("{{Extra Receipt text}}", receipt_extra_text if receipt_extra_text else "")
-                
-                # Save to buffer
-                buffer = BytesIO()
-                template.save(buffer)
-                buffer.seek(0)
-                
-                # יצירת שם הקובץ לפי הפורמט הנדרש
-                filename = f"{receipt_project} - Receipt of Funds {receipt_payment_order} - {receipt_client}.docx"
-                
-                # Add to database
-                receipt_data = {
-                    "type": "Receipt of Funds",
-                    "payment_order": receipt_payment_order,
-                    "date": str(receipt_date),
-                    "project": receipt_project,
-                    "villa": receipt_villa,
-                    "client": receipt_client,
-                    "amount": receipt_amount,
-                    "extra_text": receipt_extra_text,
-                    "timestamp": datetime.datetime.now().isoformat()
-                }
-                
-                st.session_state.receipts_db.append(receipt_data)
-                
-                # Also add to invoices database for compatibility
-                invoice_data = {
-                    "invoice_number": f"RF-{receipt_payment_order}",
-                    "date": str(receipt_date),
-                    "project": receipt_project,
-                    "villa": receipt_villa,
-                    "client": receipt_client,
-                    "amount": receipt_amount,
-                    "notes": receipt_extra_text,
-                    "timestamp": datetime.datetime.now().isoformat()
-                }
-                st.session_state.invoices_db.append(invoice_data)
-                
-                st.markdown('<div class="success-msg">✅ Receipt of Funds generated successfully!</div>', unsafe_allow_html=True)
-                
-                st.download_button(
-                    label="📥 Download Receipt of Funds",
-                    data=buffer,
-                    file_name=filename,
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    use_container_width=True
-                )
-                
-                # נקה את הבחירה אחרי יצירת הקבלה
-                if 'selected_payment_instruction' in st.session_state:
-                    del st.session_state.selected_payment_instruction
-                    
-            except FileNotFoundError:
-                st.error("❌ Template file 'Receipt_of_Funds.docx' not found. Please add it to the app directory.")
-            except Exception as e:
-                st.error(f"❌ Error generating receipt: {str(e)}")
-                
+    # Generate invoice button
+    if st.button("🧾 Generate Invoice", use_container_width=True, key="generate_invoice"):
+        if invoice_number and invoice_amount:
+            # Add to invoices database
+            invoice_data = {
+                "invoice_number": invoice_number,
+                "date": str(invoice_date),
+                "project": invoice_project,
+                "villa": invoice_villa,
+                "client": invoice_client,
+                "amount": invoice_amount,
+                "notes": invoice_notes,
+                "timestamp": datetime.datetime.now().isoformat()
+            }
+            
+            st.session_state.invoices_db.append(invoice_data)
+            
+            # Also add to receipts database
+            receipt_data = {
+                "type": "Invoice",
+                "number": invoice_number,
+                "date": str(invoice_date),
+                "project": invoice_project,
+                "villa": invoice_villa,
+                "client": invoice_client,
+                "amount": invoice_amount,
+                "notes": invoice_notes,
+                "timestamp": datetime.datetime.now().isoformat()
+            }
+            st.session_state.receipts_db.append(receipt_data)
+            
+            st.markdown('<div class="success-msg">✅ Invoice generated and saved to database!</div>', unsafe_allow_html=True)
+            
+            # Create downloadable invoice (simplified version)
+            invoice_content = f"""
+INVOICE
+========================================
+Invoice Number: {invoice_number}
+Date: {invoice_date}
+----------------------------------------
+Bill To:
+{invoice_client}
+{invoice_project} - {invoice_villa}
+----------------------------------------
+Amount Due: €{invoice_amount}
+----------------------------------------
+Notes:
+{invoice_notes}
+========================================
+Generated by Aiolos Financial Tools
+            """
+            
+            st.download_button(
+                label="📥 Download Invoice (Text)",
+                data=invoice_content,
+                file_name=f"Invoice_{invoice_number}_{invoice_date}.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
+            
+            # נקה את הבחירה אחרי יצירת החשבונית
+            if 'selected_payment_instruction' in st.session_state:
+                del st.session_state.selected_payment_instruction
         else:
-            st.warning("⚠️ Please fill in Payment Order Number and Amount")
+            st.warning("⚠️ Please fill in Invoice Number and Amount")
     
     st.markdown('</div>', unsafe_allow_html=True)
 
