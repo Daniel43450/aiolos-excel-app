@@ -1163,11 +1163,94 @@ with tab2:
 # ============================================
 # TAB 3: INVOICES
 # ============================================
+# ============================================
+# TAB 3: INVOICES  -> Receipt of Funds Generator
+# ============================================
 with tab3:
     st.markdown('<div class="info-card">', unsafe_allow_html=True)
     st.markdown("### 🧾 Receipt of Funds Generator")
     
-    # היסטוריה של הוראות תשלום
+    # ---------- Helpers for state ----------
+    def _all_projects():
+        return sorted(set(k[0] for k in VILLA_OWNERS))
+
+    def _villas_for(project):
+        return sorted(set(k[1] for k in VILLA_OWNERS if k[0] == project))
+
+    def _ensure_form_state_defaults():
+        # init once
+        if 'receipt_project' not in st.session_state:
+            st.session_state.receipt_project = _all_projects()[0]
+        if 'receipt_villa' not in st.session_state:
+            st.session_state.receipt_villa = _villas_for(st.session_state.receipt_project)[0]
+        if 'receipt_payment_order' not in st.session_state:
+            st.session_state.receipt_payment_order = ""
+        if 'receipt_amount' not in st.session_state:
+            st.session_state.receipt_amount = ""
+        if 'receipt_date' not in st.session_state:
+            st.session_state.receipt_date = datetime.date.today()
+        if 'receipt_extra_text' not in st.session_state:
+            st.session_state.receipt_extra_text = ""
+
+    def _load_into_form_from_instruction(instr):
+        # Fill widget state directly from selected instruction
+        st.session_state.receipt_project = instr.get('project', _all_projects()[0]) or _all_projects()[0]
+        # Make sure villa exists for project
+        villas = _villas_for(st.session_state.receipt_project)
+        v = instr.get('villa') if instr.get('villa') in villas else villas[0]
+        st.session_state.receipt_villa = v
+        st.session_state.receipt_payment_order = str(instr.get('payment_order', ''))
+        st.session_state.receipt_amount = str(instr.get('amount', ''))
+        st.session_state.receipt_date = datetime.date.today()
+        st.session_state.receipt_extra_text = instr.get('notes', '')
+
+    def _clear_form():
+        first_project = _all_projects()[0]
+        st.session_state.receipt_project = first_project
+        st.session_state.receipt_villa = _villas_for(first_project)[0]
+        st.session_state.receipt_payment_order = ""
+        st.session_state.receipt_amount = ""
+        st.session_state.receipt_date = datetime.date.today()
+        st.session_state.receipt_extra_text = ""
+        # Also clear any loaded instruction
+        if 'selected_payment_instruction' in st.session_state:
+            del st.session_state.selected_payment_instruction
+
+    def _find_template_path():
+        for pth in ["Receipt_of_Funds.docx", "/mnt/data/Receipt_of_Funds.docx"]:
+            if os.path.exists(pth):
+                return pth
+        return None
+
+    def _fill_template_docx(template_path, mapping):
+        # Using python-docx: replacing paragraph & table text, then re-apply bold on title
+        doc = Document(template_path)
+
+        # paragraphs
+        for p in doc.paragraphs:
+            txt = p.text
+            for k, v in mapping.items():
+                txt = txt.replace(k, v)
+            p.text = txt  # resets runs
+
+        # tables
+        for tbl in doc.tables:
+            for row in tbl.rows:
+                for cell in row.cells:
+                    for p in cell.paragraphs:
+                        txt = p.text
+                        for k, v in mapping.items():
+                            txt = txt.replace(k, v)
+                        p.text = txt
+
+        # keep title bold
+        for p in doc.paragraphs:
+            if p.text.strip().startswith("Receipt of Funds"):
+                for run in p.runs:
+                    run.bold = True
+        return doc
+
+    # ---------- Payment Instructions History ----------
     if st.session_state.payment_instructions_db:
         st.markdown("### 📋 Payment Instructions History")
         st.markdown('<div class="info-msg">💡 Select a payment instruction to auto-fill the receipt form</div>', unsafe_allow_html=True)
@@ -1202,6 +1285,7 @@ with tab3:
             with cols_row[6]:
                 if st.button("📥", key=f"load_pi_{actual_idx}", help="Load this payment instruction"):
                     st.session_state.selected_payment_instruction = instruction
+                    st.session_state.load_into_form = True   # flag to prefill widgets
                     st.rerun()
             with cols_row[7]:
                 if st.button("🗑️", key=f"delete_pi_{actual_idx}", help="Delete this payment instruction"):
@@ -1209,83 +1293,74 @@ with tab3:
                     st.success("Payment instruction deleted!")
                     st.rerun()
         st.markdown("---")
-    
-    # טעינת ברירות מחדל
-    selected_instruction = None
-    if 'selected_payment_instruction' in st.session_state:
-        selected_instruction = st.session_state.selected_payment_instruction
+
+    # ---------- Defaults & auto-fill after load ----------
+    _ensure_form_state_defaults()
+
+    selected_instruction = st.session_state.get('selected_payment_instruction')
+    if st.session_state.get('load_into_form') and selected_instruction:
+        _load_into_form_from_instruction(selected_instruction)
+        st.session_state.load_into_form = False
         st.markdown('<div class="success-msg">✅ Payment instruction loaded! Fields filled automatically.</div>', unsafe_allow_html=True)
-    elif 'last_payment' in st.session_state:
-        selected_instruction = st.session_state.last_payment
-        st.markdown('<div class="info-msg">📌 Recent payment instruction detected! Fields pre-filled below.</div>', unsafe_allow_html=True)
-    
-    if selected_instruction:
-        default_project = selected_instruction['project']
-        default_villa = selected_instruction['villa']
-        default_amount = selected_instruction['amount']
-        default_payment_order = selected_instruction['payment_order']
-        default_client = selected_instruction['client_name']
-        default_notes = selected_instruction.get('notes', '')
-    else:
-        default_project = sorted(set(k[0] for k in VILLA_OWNERS))[0]
-        default_villa = None
-        default_amount = ""
-        default_payment_order = ""
-        default_client = ""
-        default_notes = ""
-    
+    elif 'last_payment' in st.session_state and not any(st.session_state.get(k) for k in ['selected_payment_instruction','load_into_form']):
+        # Optional hint if nothing loaded but there is a recent payment
+        st.markdown('<div class="info-msg">📌 Recent payment instruction detected! You can load it from history above.</div>', unsafe_allow_html=True)
+
+    # ---------- Form UI ----------
     col1, col2 = st.columns([3, 2])
-    
     with col1:
         st.markdown("### 📝 Receipt of Funds Details")
-        receipt_project = st.selectbox(
+
+        # Project select (value from state)
+        st.selectbox(
             "Project",
-            sorted(set(k[0] for k in VILLA_OWNERS)),
-            index=sorted(set(k[0] for k in VILLA_OWNERS)).index(default_project) if default_project else 0,
+            _all_projects(),
             key="receipt_project"
         )
-        
-        villa_options_receipt = sorted(set(k[1] for k in VILLA_OWNERS if k[0] == receipt_project))
-        receipt_villa = st.selectbox(
+
+        # Sync villa options for current project
+        villa_options_receipt = _villas_for(st.session_state.receipt_project)
+        if st.session_state.receipt_villa not in villa_options_receipt:
+            st.session_state.receipt_villa = villa_options_receipt[0]
+
+        st.selectbox(
             "Villa",
             villa_options_receipt,
-            index=villa_options_receipt.index(default_villa) if default_villa and default_villa in villa_options_receipt else 0,
             key="receipt_villa"
         )
-        
-        receipt_client = VILLA_OWNERS.get((receipt_project, receipt_villa), "")
+
+        receipt_client = VILLA_OWNERS.get((st.session_state.receipt_project, st.session_state.receipt_villa), "")
         if receipt_client:
             st.markdown(f'<div class="info-msg">👤 <strong>Client:</strong> {receipt_client}</div>', unsafe_allow_html=True)
-        
-        receipt_payment_order = st.text_input("Payment Order Number", value=default_payment_order, placeholder="001", key="receipt_payment_order")
-        receipt_amount = st.text_input("Amount (€)", value=default_amount, placeholder="5000", key="receipt_amount")
-        receipt_date = st.date_input("Date of Receipt", value=datetime.date.today(), key="receipt_date")
-        receipt_extra_text = st.text_area(
+
+        st.text_input("Payment Order Number", placeholder="001", key="receipt_payment_order")
+        st.text_input("Amount (€)", placeholder="5000", key="receipt_amount")
+        st.date_input("Date of Receipt", key="receipt_date")
+        st.text_area(
             "Extra Receipt Text (Optional)",
-            value=default_notes,
             placeholder="Additional information about the payment...",
             help="This text will appear in the receipt. Leave empty if not needed.",
             key="receipt_extra_text"
         )
-        
+
+        # Clear form really clears everything
         if st.button("🔄 Clear Form", use_container_width=True, key="clear_receipt_form"):
-            if 'selected_payment_instruction' in st.session_state:
-                del st.session_state.selected_payment_instruction
+            _clear_form()
             st.rerun()
-    
+
     with col2:
         st.markdown("### 📊 Receipt Preview")
-        if receipt_payment_order and receipt_amount:
+        if st.session_state.receipt_payment_order and st.session_state.receipt_amount:
             st.markdown(f"""
             <div style="background: white; padding: 1.5rem; border-radius: 12px; border: 2px solid #e0e0e0; text-align: left;">
                 <h4 style="color: #1e3c72; margin-bottom: 1rem;">🧾 Receipt of Funds Preview</h4>
                 <p><strong>To:</strong> {receipt_client}</p>
-                <p><strong>Project:</strong> {receipt_project}</p>
-                <p><strong>Villa #:</strong> {receipt_villa}</p>
-                <p><strong>Payment Order:</strong> {receipt_payment_order}</p>
-                <p><strong>Date:</strong> {receipt_date.strftime('%d/%m/%Y')}</p>
-                <p><strong>Amount:</strong> <span style="font-weight: bold;">€{receipt_amount}</span></p>
-                {f'<p><strong>Extra Text:</strong> {receipt_extra_text[:50]}{"..." if len(receipt_extra_text) > 50 else ""}</p>' if receipt_extra_text else ""}
+                <p><strong>Project:</strong> {st.session_state.receipt_project}</p>
+                <p><strong>Villa #:</strong> {st.session_state.receipt_villa}</p>
+                <p><strong>Payment Order:</strong> {st.session_state.receipt_payment_order}</p>
+                <p><strong>Date:</strong> {st.session_state.receipt_date.strftime('%d/%m/%Y')}</p>
+                <p><strong>Amount:</strong> <span style="font-weight: bold;">€{st.session_state.receipt_amount}</span></p>
+                {f'<p><strong>Extra Text:</strong> {st.session_state.receipt_extra_text[:50]}{"..." if len(st.session_state.receipt_extra_text) > 50 else ""}</p>' if st.session_state.receipt_extra_text else ""}
             </div>
             """, unsafe_allow_html=True)
         else:
@@ -1295,58 +1370,31 @@ with tab3:
                 <p style="color: #6c757d;">Fill in the details to see preview</p>
             </div>
             """, unsafe_allow_html=True)
-    
-    # ===== יצירת קבלה מתוך טמפלט ה-Word =====
-    def _find_template_path():
-        candidates = ["Receipt_of_Funds.docx", "/mnt/data/Receipt_of_Funds.docx"]
-        for pth in candidates:
-            if os.path.exists(pth):
-                return pth
-        return None
 
-    def _fill_template_docx(template_path, mapping):
-        # הערה: שינוי p.text מאפס runs ולכן לאחר ההחלפה נוודא שהכותרת ב-bold מחדש
-        doc = Document(template_path)
-
-        # פסקאות
-        for p in doc.paragraphs:
-            txt = p.text
-            for k, v in mapping.items():
-                txt = txt.replace(k, v)
-            p.text = txt  # יוצר runs מחדש
-
-        # טבלאות
-        for tbl in doc.tables:
-            for row in tbl.rows:
-                for cell in row.cells:
-                    for p in cell.paragraphs:
-                        txt = p.text
-                        for k, v in mapping.items():
-                            txt = txt.replace(k, v)
-                        p.text = txt
-
-        # החזרת ה-Bold לכותרת שמתחילה ב-Receipt of Funds
-        for p in doc.paragraphs:
-            if p.text.strip().startswith("Receipt of Funds"):
-                for run in p.runs:
-                    run.bold = True
-        return doc
-
+    # ---------- Generate DOCX from template ----------
     if st.button("📥 Generate and Download Receipt of Funds", use_container_width=True, key="generate_receipt"):
-        if receipt_payment_order and receipt_amount:
+        rp = st.session_state.receipt_project
+        rv = st.session_state.receipt_villa
+        rc = VILLA_OWNERS.get((rp, rv), "")
+        rpo = st.session_state.receipt_payment_order
+        ra = st.session_state.receipt_amount
+        rd = st.session_state.receipt_date
+        rx = st.session_state.receipt_extra_text
+
+        if rpo and ra:
             try:
                 template_path = _find_template_path()
                 if not template_path:
                     raise FileNotFoundError("Template file 'Receipt_of_Funds.docx' not found. Place it in the app folder or /mnt/data.")
                 
                 mapping = {
-                    "{{client_name}}": receipt_client or "",
-                    "{{plot}}": receipt_project or "",
-                    "{{villa_no}}": receipt_villa or "",
-                    "{{payment_order_number}}": receipt_payment_order or "",
-                    "{{sum}}": str(receipt_amount or ""),
-                    "{{date}}": receipt_date.strftime("%d/%m/%Y") if receipt_date else "",
-                    "{{Extra Receipt text}}": (receipt_extra_text if receipt_extra_text and receipt_extra_text.strip() else "")
+                    "{{client_name}}": rc or "",
+                    "{{plot}}": rp or "",
+                    "{{villa_no}}": rv or "",
+                    "{{payment_order_number}}": rpo or "",
+                    "{{sum}}": str(ra or ""),
+                    "{{date}}": rd.strftime("%d/%m/%Y") if rd else "",
+                    "{{Extra Receipt text}}": (rx if rx and rx.strip() else "")
                 }
 
                 doc = _fill_template_docx(template_path, mapping)
@@ -1354,25 +1402,24 @@ with tab3:
                 doc.save(buffer)
                 buffer.seek(0)
 
-                # שם הקובץ לפי הדרישה, עם שני רווחים לפני שם הלקוח
-                filename = f"{receipt_project} - Receipt of Funds {receipt_payment_order} -  {receipt_client}.docx"
+                # filename with two spaces before client_name (as requested)
+                filename = f"{rp} - Receipt of Funds {rpo} -  {rc}.docx"
 
-                # שמירה במסד המקומי כך שטאב 4 יעבוד כראוי
+                # Save a record so TAB 4 shows it
                 receipt_record = {
                     "type": "Receipt of Funds",
-                    "number": receipt_payment_order,        # חשוב כדי שטאב 4 לא יתרסק
-                    "date": receipt_date.strftime("%Y-%m-%d"),
-                    "project": receipt_project,
-                    "villa": receipt_villa,
-                    "client": receipt_client,
-                    "amount": receipt_amount,
-                    "notes": receipt_extra_text,            # Tab 4 מציג "notes" אם יש
+                    "number": rpo,
+                    "date": rd.strftime("%Y-%m-%d"),
+                    "project": rp,
+                    "villa": rv,
+                    "client": rc,
+                    "amount": ra,
+                    "notes": rx,
                     "timestamp": datetime.datetime.now().isoformat()
                 }
                 st.session_state.receipts_db.append(receipt_record)
 
                 st.markdown('<div class="success-msg">✅ Receipt of Funds generated successfully!</div>', unsafe_allow_html=True)
-
                 st.download_button(
                     label="📥 Download Receipt of Funds (DOCX)",
                     data=buffer,
@@ -1380,9 +1427,6 @@ with tab3:
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     use_container_width=True
                 )
-
-                if 'selected_payment_instruction' in st.session_state:
-                    del st.session_state.selected_payment_instruction
 
             except FileNotFoundError as e:
                 st.error(f"❌ {str(e)}")
@@ -1392,6 +1436,7 @@ with tab3:
             st.warning("⚠️ Please fill in Payment Order Number and Amount")
     
     st.markdown('</div>', unsafe_allow_html=True)
+
 
 # ============================================
 # TAB 4: RECEIPTS DATABASE
