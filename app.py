@@ -310,6 +310,9 @@ if 'receipts_db' not in st.session_state:
 if 'invoices_db' not in st.session_state:
     st.session_state.invoices_db = []
 
+if 'payment_instructions_db' not in st.session_state:
+    st.session_state.payment_instructions_db = []
+
 # ============================================
 # HEADER WITH LOGO
 # ============================================
@@ -1117,15 +1120,23 @@ with tab2:
                 
                 filename = f"Payment_Instruction_{project}_{villa}_Order_{payment_order}.docx"
                 
-                # Store in session for invoice generation
-                st.session_state.last_payment = {
+                # שמור את ההוראה בהיסטוריה
+                payment_instruction = {
+                    "id": f"PI_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}",
                     "project": project,
                     "villa": villa,
                     "client_name": client_name,
                     "payment_order": payment_order,
                     "amount": amount,
-                    "notes": extra_text
+                    "notes": extra_text,
+                    "created_date": datetime.datetime.now().strftime("%d/%m/%Y %H:%M"),
+                    "timestamp": datetime.datetime.now().isoformat()
                 }
+                
+                st.session_state.payment_instructions_db.append(payment_instruction)
+                
+                # עדיין שמור גם כ-last_payment לתאימות לאחור
+                st.session_state.last_payment = payment_instruction
                 
                 st.markdown('<div class="success-msg">✅ Payment instruction generated successfully!</div>', unsafe_allow_html=True)
                 
@@ -1148,7 +1159,7 @@ with tab2:
                 st.error(f"❌ Error generating payment instruction: {str(e)}")
         else:
             st.warning("⚠️ Please fill in Payment Order Number and Amount")
-
+            
 # ============================================
 # TAB 3: INVOICES
 # ============================================
@@ -1156,22 +1167,93 @@ with tab3:
     st.markdown('<div class="info-card">', unsafe_allow_html=True)
     st.markdown("### 🧾 Invoice Generator")
     
-    # Check if there's a recent payment instruction
-    if 'last_payment' in st.session_state:
+    # הצג היסטוריה של הוראות תשלום אם יש
+    if st.session_state.payment_instructions_db:
+        st.markdown("### 📋 Payment Instructions History")
+        st.markdown('<div class="info-msg">💡 Select a payment instruction to auto-fill the invoice form</div>', unsafe_allow_html=True)
+        
+        # יצירת טבלת היסטוריה עם כפתורים
+        cols_history = st.columns([0.5, 1, 1.5, 1.5, 1, 1, 0.5, 0.5])
+        
+        # כותרות
+        with cols_history[0]:
+            st.write("**#**")
+        with cols_history[1]:
+            st.write("**Date**")
+        with cols_history[2]:
+            st.write("**Project**")
+        with cols_history[3]:
+            st.write("**Client**")
+        with cols_history[4]:
+            st.write("**Order#**")
+        with cols_history[5]:
+            st.write("**Amount**")
+        with cols_history[6]:
+            st.write("**Load**")
+        with cols_history[7]:
+            st.write("**Delete**")
+        
+        st.markdown("---")
+        
+        # הצגת ההוראות (מהחדשה לישנה)
+        for idx, instruction in enumerate(reversed(st.session_state.payment_instructions_db)):
+            actual_idx = len(st.session_state.payment_instructions_db) - 1 - idx
+            cols_row = st.columns([0.5, 1, 1.5, 1.5, 1, 1, 0.5, 0.5])
+            
+            with cols_row[0]:
+                st.write(f"{idx + 1}")
+            with cols_row[1]:
+                st.write(instruction['created_date'].split(' ')[0])
+            with cols_row[2]:
+                st.write(f"{instruction['project']} - {instruction['villa']}")
+            with cols_row[3]:
+                client_display = instruction['client_name'][:25] + "..." if len(instruction['client_name']) > 25 else instruction['client_name']
+                st.write(client_display)
+            with cols_row[4]:
+                st.write(instruction['payment_order'])
+            with cols_row[5]:
+                st.write(f"€{instruction['amount']}")
+            with cols_row[6]:
+                if st.button("📥", key=f"load_pi_{actual_idx}", help="Load this payment instruction"):
+                    st.session_state.selected_payment_instruction = instruction
+                    st.rerun()
+            with cols_row[7]:
+                if st.button("🗑️", key=f"delete_pi_{actual_idx}", help="Delete this payment instruction"):
+                    st.session_state.payment_instructions_db.pop(actual_idx)
+                    st.success("Payment instruction deleted!")
+                    st.rerun()
+        
+        st.markdown("---")
+    
+    # בדיקה אם נבחרה הוראת תשלום או שיש הוראה אחרונה
+    selected_instruction = None
+    if 'selected_payment_instruction' in st.session_state:
+        selected_instruction = st.session_state.selected_payment_instruction
+        st.markdown('<div class="success-msg">✅ Payment instruction loaded! Fields filled automatically.</div>', unsafe_allow_html=True)
+    elif 'last_payment' in st.session_state:
+        selected_instruction = st.session_state.last_payment
         st.markdown('<div class="info-msg">📌 Recent payment instruction detected! Fields pre-filled below.</div>', unsafe_allow_html=True)
-        default_project = st.session_state.last_payment['project']
-        default_villa = st.session_state.last_payment['villa']
-        default_amount = st.session_state.last_payment['amount']
-        default_payment_order = st.session_state.last_payment['payment_order']
+    
+    # הגדרת ערכי ברירת מחדל
+    if selected_instruction:
+        default_project = selected_instruction['project']
+        default_villa = selected_instruction['villa']
+        default_amount = selected_instruction['amount']
+        default_payment_order = selected_instruction['payment_order']
+        default_client = selected_instruction['client_name']
+        default_notes = selected_instruction.get('notes', '')
     else:
         default_project = sorted(set(k[0] for k in VILLA_OWNERS))[0]
         default_villa = None
         default_amount = ""
         default_payment_order = ""
+        default_client = ""
+        default_notes = ""
     
     col1, col2 = st.columns([3, 2])
     
     with col1:
+        st.markdown("### 📝 Invoice Details")
         # Invoice details
         invoice_project = st.selectbox(
             "Project",
@@ -1184,6 +1266,7 @@ with tab3:
         invoice_villa = st.selectbox(
             "Villa",
             villa_options_invoice,
+            index=villa_options_invoice.index(default_villa) if default_villa and default_villa in villa_options_invoice else 0,
             key="invoice_villa"
         )
         
@@ -1194,18 +1277,35 @@ with tab3:
         invoice_number = st.text_input("Invoice Number", value=default_payment_order, placeholder="INV-001", key="invoice_number")
         invoice_amount = st.text_input("Amount (€)", value=default_amount, placeholder="5000", key="invoice_amount")
         invoice_date = st.date_input("Invoice Date", value=datetime.date.today(), key="invoice_date")
-        invoice_notes = st.text_area("Notes/Description", placeholder="Payment received for...", key="invoice_notes")
+        invoice_notes = st.text_area("Notes/Description", value=default_notes, placeholder="Payment received for...", key="invoice_notes")
+        
+        # כפתור לניקוי הטופס
+        if st.button("🔄 Clear Form", use_container_width=True, key="clear_invoice_form"):
+            if 'selected_payment_instruction' in st.session_state:
+                del st.session_state.selected_payment_instruction
+            st.rerun()
     
     with col2:
         st.markdown("### 📊 Invoice Preview")
         if invoice_number and invoice_amount:
             st.markdown(f"""
-            **Invoice #:** {invoice_number}  
-            **Date:** {invoice_date}  
-            **Client:** {invoice_client}  
-            **Project:** {invoice_project} - {invoice_villa}  
-            **Amount:** €{invoice_amount}  
-            """)
+            <div style="background: white; padding: 1.5rem; border-radius: 12px; border: 2px solid #e0e0e0; text-align: left;">
+                <h4 style="color: #1e3c72; margin-bottom: 1rem;">🧾 Invoice Preview</h4>
+                <p><strong>Invoice #:</strong> {invoice_number}</p>
+                <p><strong>Date:</strong> {invoice_date}</p>
+                <p><strong>Client:</strong> {invoice_client}</p>
+                <p><strong>Project:</strong> {invoice_project} - {invoice_villa}</p>
+                <p><strong>Amount:</strong> <span style="color: #28a745; font-weight: bold;">€{invoice_amount}</span></p>
+                {f'<p><strong>Notes:</strong> {invoice_notes[:50]}{"..." if len(invoice_notes) > 50 else ""}</p>' if invoice_notes else ""}
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 12px; border: 2px dashed #dee2e6; text-align: center;">
+                <h4 style="color: #6c757d;">📄 Invoice Preview</h4>
+                <p style="color: #6c757d;">Fill in the details to see preview</p>
+            </div>
+            """, unsafe_allow_html=True)
     
     # Generate invoice button
     if st.button("🧾 Generate Invoice", use_container_width=True, key="generate_invoice"):
@@ -1266,6 +1366,10 @@ Generated by Aiolos Financial Tools
                 mime="text/plain",
                 use_container_width=True
             )
+            
+            # נקה את הבחירה אחרי יצירת החשבונית
+            if 'selected_payment_instruction' in st.session_state:
+                del st.session_state.selected_payment_instruction
         else:
             st.warning("⚠️ Please fill in Invoice Number and Amount")
     
