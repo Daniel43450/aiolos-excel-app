@@ -1166,34 +1166,66 @@ with tab2:
 with tab3:
     st.markdown('<div class="info-card">', unsafe_allow_html=True)
     st.markdown("### 🧾 Invoice Generator")
-    
     # הצג היסטוריה של הוראות תשלום אם יש
-    if st.session_state.payment_instructions_db:
-        st.markdown("### 📋 Payment Instructions History")
-        st.markdown('<div class="info-msg">💡 Select a payment instruction to auto-fill the invoice form</div>', unsafe_allow_html=True)
+if st.session_state.payment_instructions_db:
+    st.markdown("### 📋 Payment Instructions History")
+    st.markdown('<div class="info-msg">💡 Select a payment instruction to auto-fill the invoice form</div>', unsafe_allow_html=True)
+    
+    # יצירת טבלת היסטוריה עם כפתורים
+    cols_history = st.columns([0.5, 1, 1.5, 1.5, 1, 1, 0.5, 0.5])
+    
+    # כותרות
+    with cols_history[0]:
+        st.write("**#**")
+    with cols_history[1]:
+        st.write("**Date**")
+    with cols_history[2]:
+        st.write("**Project**")
+    with cols_history[3]:
+        st.write("**Client**")
+    with cols_history[4]:
+        st.write("**Order#**")
+    with cols_history[5]:
+        st.write("**Amount**")
+    with cols_history[6]:
+        st.write("**Load**")
+    with cols_history[7]:
+        st.write("**Delete**")
+    
+    st.markdown("---")
+    
+    # הצגת ההוראות (רק 5 האחרונות)
+    recent_instructions = list(reversed(st.session_state.payment_instructions_db))[:5]
+    
+    for idx, instruction in enumerate(recent_instructions):
+        actual_idx = len(st.session_state.payment_instructions_db) - 1 - idx
+        cols_row = st.columns([0.5, 1, 1.5, 1.5, 1, 1, 0.5, 0.5])
         
-        # יצירת טבלת היסטוריה עם כפתורים
-        cols_history = st.columns([0.5, 1, 1.5, 1.5, 1, 1, 0.5, 0.5])
-        
-        # כותרות
-        with cols_history[0]:
-            st.write("**#**")
-        with cols_history[1]:
-            st.write("**Date**")
-        with cols_history[2]:
-            st.write("**Project**")
-        with cols_history[3]:
-            st.write("**Client**")
-        with cols_history[4]:
-            st.write("**Order#**")
-        with cols_history[5]:
-            st.write("**Amount**")
-        with cols_history[6]:
-            st.write("**Load**")
-        with cols_history[7]:
-            st.write("**Delete**")
-        
-        st.markdown("---")
+        with cols_row[0]:
+            st.write(f"{idx + 1}")
+        with cols_row[1]:
+            st.write(instruction['created_date'].split(' ')[0])
+        with cols_row[2]:
+            st.write(f"{instruction['project']} - {instruction['villa']}")
+        with cols_row[3]:
+            client_display = instruction['client_name'][:25] + "..." if len(instruction['client_name']) > 25 else instruction['client_name']
+            st.write(client_display)
+        with cols_row[4]:
+            st.write(instruction['payment_order'])
+        with cols_row[5]:
+            st.write(f"€{instruction['amount']}")
+        with cols_row[6]:
+            if st.button("📥", key=f"load_pi_{actual_idx}", help="Load this payment instruction"):
+                st.session_state.selected_payment_instruction = instruction
+                st.rerun()
+        with cols_row[7]:
+            if st.button("🗑️", key=f"delete_pi_{actual_idx}", help="Delete this payment instruction"):
+                st.session_state.payment_instructions_db.pop(actual_idx)
+                st.success("Payment instruction deleted!")
+                st.rerun()
+    
+    st.markdown("---")
+    
         
         # הצגת ההוראות (מהחדשה לישנה)
         for idx, instruction in enumerate(reversed(st.session_state.payment_instructions_db)):
