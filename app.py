@@ -1488,17 +1488,47 @@ with tab3:
 with tab4:
     st.markdown('<div class="info-card">', unsafe_allow_html=True)
     st.markdown("### 📋 All Receipts & Invoices Database")
-    
+
+    # ---------- Persistence helpers ----------
+    RECEIPTS_DB_FILE = "receipts_db.json"
+
+    def _load_receipts_db():
+        try:
+            if os.path.exists(RECEIPTS_DB_FILE):
+                with open(RECEIPTS_DB_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    return data if isinstance(data, list) else []
+        except Exception:
+            pass
+        return []
+
+    def _save_receipts_db(data):
+        try:
+            with open(RECEIPTS_DB_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            st.warning(f"Could not persist receipts DB: {e}")
+
+    # Bootstrap session state from disk or sync to disk
+    if 'receipts_db' not in st.session_state:
+        st.session_state.receipts_db = _load_receipts_db()
+    else:
+        if st.session_state.receipts_db:
+            _save_receipts_db(st.session_state.receipts_db)
+        else:
+            disk_data = _load_receipts_db()
+            if disk_data:
+                st.session_state.receipts_db = disk_data
+
     # Combine all receipts and invoices
     all_records = st.session_state.receipts_db
-    
+
     if all_records:
         # Create DataFrame for display
         df_records = pd.DataFrame(all_records)
 
         # Summary metrics
         total_records = len(df_records)
-        # חישוב סכום כולל באופן חסין גם למחרוזות
         total_amount = 0.0
         for r in all_records:
             try:
@@ -1540,7 +1570,6 @@ with tab4:
                 key="filter_villa"
             )
         with col3:
-            # ⬅️ הוספתי Receipt of Funds
             filter_type = st.selectbox(
                 "Filter by Type",
                 ["All", "Invoice", "Receipt of Funds", "Payment Instruction"],
@@ -1561,7 +1590,6 @@ with tab4:
             st.markdown("### 📊 Records Table")
 
             for idx, record in enumerate(filtered_records):
-                # תצוגה חסינה לשדות חסרים
                 display_type = record.get('type', '')
                 display_number = record.get('number') or record.get('payment_order') or record.get('invoice_number') or "N/A"
                 display_project = record.get('project', '')
@@ -1577,11 +1605,12 @@ with tab4:
                         if notes_val:
                             st.write(f"**Notes:** {notes_val}")
                     with colB:
-                        # מחיקה בטוחה מתוך הרשימה המקורית לפי זהות האובייקט
+                        # מחיקה בטוחה + התמדה לדיסק
                         if st.button("🗑️ Delete", key=f"delete_{idx}"):
                             for i, r0 in enumerate(st.session_state.receipts_db):
                                 if r0 is record:
                                     st.session_state.receipts_db.pop(i)
+                                    _save_receipts_db(st.session_state.receipts_db)
                                     break
                             st.rerun()
         else:
@@ -1605,7 +1634,7 @@ with tab4:
                 use_container_width=True
             )
     else:
-        st.info("📭 No receipts or invoices generated yet. Create your first one in the Payment Instructions or Invoices tab!")
+        st.info("📭 No records found yet. Create your first one in the Payment Instructions or Invoices tab!")
     
     st.markdown('</div>', unsafe_allow_html=True)
     
@@ -1621,6 +1650,8 @@ with tab4:
         with col2:
             if st.button("✅ Confirm Clear", use_container_width=True):
                 st.session_state.receipts_db = []
+                _save_receipts_db(st.session_state.receipts_db)  # persist empty DB
+                # אופציונלי: נקה גם invoices_db אם תרצה התמדה נפרדת לקבצים
                 st.session_state.invoices_db = []
                 st.session_state.show_clear_confirm = False
                 st.success("Database cleared successfully!")
