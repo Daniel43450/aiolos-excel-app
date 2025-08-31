@@ -1486,13 +1486,22 @@ with tab3:
 
                 doc = _fill_template_docx(template_path, mapping)
                 buffer = BytesIO()
+                # שמירה לזיכרון כ-DOCX
+                buffer = BytesIO()
                 doc.save(buffer)
-                buffer.seek(0)
+                docx_bytes = buffer.getvalue()
 
-                # filename with two spaces before client_name
-                filename = f"{rp} - Receipt of Funds {rpo} -  {rc}.docx"
+                # שמות קבצים (כולל שני רווחים לפני שם הלקוח)
+                filename_docx = f"{rp} - Receipt of Funds {rpo} -  {rc}.docx"
+                filename_pdf  = filename_docx.replace(".docx", ".pdf")
 
-                # Save a record so TAB 4 shows it
+                # ניסיון להמיר ל-PDF (משתמש בפונקציה הגלובלית docx_bytes_to_pdf_bytes)
+                try:
+                    pdf_bytes = docx_bytes_to_pdf_bytes(docx_bytes)
+                except Exception:
+                    pdf_bytes = None
+
+                # שמירה למסד כך שטאב 4 יציג את הרשומה
                 receipt_record = {
                     "type": "Receipt of Funds",
                     "number": rpo,
@@ -1507,22 +1516,30 @@ with tab3:
                 st.session_state.receipts_db.append(receipt_record)
 
                 st.markdown('<div class="success-msg">✅ Receipt of Funds generated successfully!</div>', unsafe_allow_html=True)
-                st.download_button(
-                    label="📥 Download Receipt of Funds (DOCX)",
-                    data=buffer,
-                    file_name=filename,
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    use_container_width=True
-                )
 
-            except FileNotFoundError as e:
-                st.error(f"❌ {str(e)}")
-            except Exception as e:
-                st.error(f"❌ Error generating receipt: {str(e)}")
-        else:
-            st.warning("⚠️ Please fill in Payment Order Number and Amount")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
+                # שני לחצני הורדה נפרדים: PDF ו-DOCX
+                col_pdf, col_docx = st.columns(2)
+
+                with col_pdf:
+                    if pdf_bytes:
+                        st.download_button(
+                            label="📥 Download Receipt of Funds (PDF)",
+                            data=pdf_bytes,
+                            file_name=filename_pdf,
+                            mime="application/pdf",
+                            use_container_width=True
+                        )
+                    else:
+                        st.info("המרה ל-PDF לא זמינה בסביבה זו")
+
+                with col_docx:
+                    st.download_button(
+                        label="📥 Download Receipt of Funds (DOCX)",
+                        data=docx_bytes,
+                        file_name=filename_docx,
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        use_container_width=True
+                    )
 
 # ============================================
 # TAB 4: RECEIPTS DATABASE
