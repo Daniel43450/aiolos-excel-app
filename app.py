@@ -379,7 +379,8 @@ VILLA_OWNERS = {
     ("G13", "Villa 3"): "Keren Goldberg",
     ("G13", "Villa 4"): "Keren Goldberg",
     ("G13", "Villa 5"): "Rachel Goldberg Keidar",
-    ("R4", "Villa 1"): "Itah Ella",
+    ("R4", "Villa 1"): "Itach Eyal & Ella",
+    ("R4", "Villa 2"): "Nirit & Ofer Mizrahi",
 }
 
 # ============================================
