@@ -1098,7 +1098,7 @@ with tab2:
         if payment_order and amount:
             try:
                 # Note: You'll need to have the template file
-                template = Document("default_template.docx")
+                template = Document("default_tempate.docx")
                 
                 # Replace placeholders
                 for p in template.paragraphs:
