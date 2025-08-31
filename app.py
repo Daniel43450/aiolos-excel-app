@@ -473,6 +473,13 @@ def process_diakofti_file(df):
             entry["Description"] = "Hotel"
             filled = True
 
+        if any(keyword in desc.upper() for keyword in ["TRANSPORT KALLI GR","GRIGORAK KYTHI GR", "O MAGOS KYTHI GR", "STAMATIS KYTHI GR", "KONTOLEO KYTHI GR", "VITSIO KYTHI GR", "BOURNAKI KYTHI GR", "STAVROU KYTHI GR"]):
+            entry["Type"] = "General"
+            entry["Supplier"] = "F&B"
+            entry["Description"] = "F&B"
+            filled = True
+
+
         if "ALL PLOTS MARKETING" in desc:
             entry["Type"] = "Marketing"
             entry["Supplier"] = "Marketing"
