@@ -6,13 +6,21 @@ from io import BytesIO
 from docx import Document
 import json
 import os
+from PIL import Image  # ← חדש
 
 # ============================================
 # PAGE CONFIGURATION
 # ============================================
+def _get_page_icon():
+    # מפעיל חיפוש גם מקומי וגם ב-/mnt/data למקרה של הרצה בסביבה אחרת
+    for path in ["Capture.PNG", "/mnt/data/Capture.PNG"]:
+        if os.path.exists(path):
+            return Image.open(path)
+    return "💼"  # fallback אם הקובץ לא נמצא
+
 st.set_page_config(
     page_title="Aiolos Financial Tools",
-    page_icon="💼",
+    page_icon=_get_page_icon(),
     layout="wide",
     initial_sidebar_state="collapsed"
 )
