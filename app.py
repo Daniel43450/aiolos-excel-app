@@ -1128,8 +1128,7 @@ with tab2:
                 buffer.seek(0)
                 
                 filename = f"Payment_Instruction_{project}_{villa}_Order_{payment_order}.docx"
-                pdf_bytes = docx_bytes_to_pdf_bytes(buffer.getvalue())
-                pdf_filename = filename.replace(".docx", ".pdf")
+                
                 # שמור את ההוראה בהיסטוריה
                 payment_instruction = {
                     "id": f"PI_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}",
@@ -1157,16 +1156,7 @@ with tab2:
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     use_container_width=True
                 )
-                # כפתור PDF אם ההמרה הצליחה
-                if pdf_bytes:
-                    st.download_button(
-                        label="📥 Download Payment Instruction (PDF)",
-                        data=pdf_bytes,
-                        file_name=pdf_filename,
-                        mime="application/pdf",
-                        use_container_width=True
-                )
-    
+                
                 # Option to create invoice
                 st.markdown("---")
                 st.markdown("### 🧾 Next Step: Create Invoice")
