@@ -1046,14 +1046,13 @@ with tab1:
 # ============================================
 # TAB 2: PAYMENT INSTRUCTIONS
 # ============================================
-
 with tab2:
     col1, col2 = st.columns([2, 1])
-
+    
     with col1:
         st.markdown('<div class="info-card">', unsafe_allow_html=True)
         st.markdown("### 📝 Generate Payment Instructions")
-
+        
         # Project selection
         project = st.selectbox(
             "Select Project",
@@ -1061,7 +1060,7 @@ with tab2:
             help="Choose the project plot",
             key="payment_project"
         )
-
+        
         # Villa selection
         villa_options = sorted(set(k[1] for k in VILLA_OWNERS if k[0] == project))
         villa = st.selectbox(
@@ -1070,35 +1069,37 @@ with tab2:
             help="Select the villa number",
             key="payment_villa"
         )
-
+        
         # Display owner name
         client_name = VILLA_OWNERS.get((project, villa), "")
         if client_name:
             st.markdown(f'<div class="info-msg">👤 <strong>Owner:</strong> {client_name}</div>', unsafe_allow_html=True)
-
+        
         # Payment details
         st.markdown("### 💳 Payment Details")
         payment_order = st.text_input("Payment Order Number", placeholder="e.g., 12345", key="payment_order")
         amount = st.text_input("Amount in Euro (€)", placeholder="e.g., 5000", key="payment_amount")
         extra_text = st.text_area("Additional Notes (Optional)", placeholder="Any additional payment information...", key="payment_notes")
-
+        
         st.markdown('</div>', unsafe_allow_html=True)
-
+    
     with col2:
         st.markdown('<div class="template-preview">', unsafe_allow_html=True)
         st.markdown("### 📄 Template Preview")
         st.markdown("See how your payment instruction will look:")
+        # Show template preview image from GitHub
         st.image("https://raw.githubusercontent.com/Daniel43450/aiolos-excel-app/main/payment_order_PNG.png", 
                  caption="Payment Instruction Template",
                  use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
-
+    
     # Generate payment instruction
     if st.button("📄 Generate Payment Instruction", use_container_width=True, key="generate_payment"):
         if payment_order and amount:
             try:
-                template = Document("default_template.docx")
-
+                # Note: You'll need to have the template file
+                template = Document("default_tempate.docx")
+                
                 # Replace placeholders
                 for p in template.paragraphs:
                     p.text = p.text.replace("{{date}}", datetime.datetime.now().strftime("%d/%m/%Y"))
@@ -1108,17 +1109,16 @@ with tab2:
                     p.text = p.text.replace("{{payment_order_number}}", payment_order)
                     p.text = p.text.replace("{{sum}}", amount)
                     p.text = p.text.replace("{{Extra Payment text}}", extra_text)
-
+                
                 # Save to buffer
                 buffer = BytesIO()
                 template.save(buffer)
                 buffer.seek(0)
-
+                
                 filename = f"Payment_Instruction_{project}_{villa}_Order_{payment_order}.docx"
-
-                # ✅ Store in history list
-                instruction_data = {
-                    "date": datetime.datetime.now().strftime("%d/%m/%Y"),
+                
+                # Store in session for invoice generation
+                st.session_state.last_payment = {
                     "project": project,
                     "villa": villa,
                     "client_name": client_name,
@@ -1126,16 +1126,9 @@ with tab2:
                     "amount": amount,
                     "notes": extra_text
                 }
-                if 'payment_instructions_db' not in st.session_state:
-                    st.session_state.payment_instructions_db = []
-                st.session_state.payment_instructions_db.append(instruction_data)
-
-                # Also store for invoice form
-                st.session_state.last_payment = instruction_data
-
-                # Success message and download
+                
                 st.markdown('<div class="success-msg">✅ Payment instruction generated successfully!</div>', unsafe_allow_html=True)
-
+                
                 st.download_button(
                     label="📥 Download Payment Instruction",
                     data=buffer,
@@ -1143,11 +1136,12 @@ with tab2:
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     use_container_width=True
                 )
-
+                
+                # Option to create invoice
                 st.markdown("---")
                 st.markdown("### 🧾 Next Step: Create Invoice")
                 st.info("Payment instruction created! You can now create an invoice for this payment in the Invoices tab.")
-
+                
             except FileNotFoundError:
                 st.error("❌ Template file 'default_template.docx' not found. Please add it to the app directory.")
             except Exception as e:
@@ -1158,128 +1152,96 @@ with tab2:
 # ============================================
 # TAB 3: INVOICES
 # ============================================
-# ============================================
-# TAB 3: INVOICES
-# ============================================
-
-# אתחול מאגר הוראות תשלום (אם לא קיים)
-if 'payment_instructions_db' not in st.session_state:
-    st.session_state.payment_instructions_db = []
-
-st.markdown('<div class="info-card">', unsafe_allow_html=True)
-st.markdown("### 🧾 Invoice Generator")
-
-# 🗂️ הצגת הוראות תשלום מהעבר
-st.markdown("### 🗂️ Past Payment Instructions")
-
-if st.session_state.payment_instructions_db:
-    for idx, inst in enumerate(st.session_state.payment_instructions_db):
-        with st.expander(f"📄 {inst['project']} - Villa {inst['villa']} | €{inst['amount']} | Order #{inst['payment_order']}"):
-            col1, col2 = st.columns([4, 1])
-            with col1:
-                st.markdown(f"""
-                - **Date:** {inst['date']}
-                - **Client:** {inst['client_name']}
-                - **Payment Order #:** {inst['payment_order']}
-                - **Amount:** €{inst['amount']}
-                - **Notes:** {inst['notes'] or '–'}
-                """)
-                if st.button("📤 Load into Invoice Form", key=f"load_instruction_{idx}"):
-                    st.session_state.last_payment = inst
-                    st.success("✅ Loaded into invoice form!")
-            with col2:
-                if st.button("🗑️ Delete", key=f"delete_instruction_{idx}"):
-                    st.session_state.payment_instructions_db.pop(idx)
-                    st.rerun()
-else:
-    st.info("📭 No past payment instructions saved yet.")
-
-st.markdown("---")
-
-# הכנה לטופס החשבונית
-if 'last_payment' in st.session_state:
-    st.markdown('<div class="info-msg">📌 Loaded payment instruction: Fields auto-filled below.</div>', unsafe_allow_html=True)
-    default_project = st.session_state.last_payment['project']
-    default_villa = st.session_state.last_payment['villa']
-    default_amount = st.session_state.last_payment['amount']
-    default_payment_order = st.session_state.last_payment['payment_order']
-else:
-    default_project = sorted(set(k[0] for k in VILLA_OWNERS))[0]
-    default_villa = None
-    default_amount = ""
-    default_payment_order = ""
-
-col1, col2 = st.columns([3, 2])
-
-with col1:
-    invoice_project = st.selectbox(
-        "Project",
-        sorted(set(k[0] for k in VILLA_OWNERS)),
-        index=sorted(set(k[0] for k in VILLA_OWNERS)).index(default_project) if default_project else 0,
-        key="invoice_project"
-    )
-
-    villa_options_invoice = sorted(set(k[1] for k in VILLA_OWNERS if k[0] == invoice_project))
-    invoice_villa = st.selectbox(
-        "Villa",
-        villa_options_invoice,
-        index=villa_options_invoice.index(default_villa) if default_villa in villa_options_invoice else 0,
-        key="invoice_villa"
-    )
-
-    invoice_client = VILLA_OWNERS.get((invoice_project, invoice_villa), "")
-    if invoice_client:
-        st.markdown(f'<div class="info-msg">👤 <strong>Client:</strong> {invoice_client}</div>', unsafe_allow_html=True)
-
-    invoice_number = st.text_input("Invoice Number", value=default_payment_order, placeholder="INV-001", key="invoice_number")
-    invoice_amount = st.text_input("Amount (€)", value=default_amount, placeholder="5000", key="invoice_amount")
-    invoice_date = st.date_input("Invoice Date", value=datetime.date.today(), key="invoice_date")
-    invoice_notes = st.text_area("Notes/Description", placeholder="Payment received for...", key="invoice_notes")
-
-with col2:
-    st.markdown("### 📊 Invoice Preview")
-    if invoice_number and invoice_amount:
-        st.markdown(f"""
-        **Invoice #:** {invoice_number}  
-        **Date:** {invoice_date}  
-        **Client:** {invoice_client}  
-        **Project:** {invoice_project} - {invoice_villa}  
-        **Amount:** €{invoice_amount}  
-        """)
-
-# יצירת החשבונית
-if st.button("🧾 Generate Invoice", use_container_width=True, key="generate_invoice"):
-    if invoice_number and invoice_amount:
-        invoice_data = {
-            "invoice_number": invoice_number,
-            "date": str(invoice_date),
-            "project": invoice_project,
-            "villa": invoice_villa,
-            "client": invoice_client,
-            "amount": invoice_amount,
-            "notes": invoice_notes,
-            "timestamp": datetime.datetime.now().isoformat()
-        }
-
-        st.session_state.invoices_db.append(invoice_data)
-
-        receipt_data = {
-            "type": "Invoice",
-            "number": invoice_number,
-            "date": str(invoice_date),
-            "project": invoice_project,
-            "villa": invoice_villa,
-            "client": invoice_client,
-            "amount": invoice_amount,
-            "notes": invoice_notes,
-            "timestamp": datetime.datetime.now().isoformat()
-        }
-
-        st.session_state.receipts_db.append(receipt_data)
-
-        st.markdown('<div class="success-msg">✅ Invoice generated and saved to database!</div>', unsafe_allow_html=True)
-
-        invoice_content = f"""
+with tab3:
+    st.markdown('<div class="info-card">', unsafe_allow_html=True)
+    st.markdown("### 🧾 Invoice Generator")
+    
+    # Check if there's a recent payment instruction
+    if 'last_payment' in st.session_state:
+        st.markdown('<div class="info-msg">📌 Recent payment instruction detected! Fields pre-filled below.</div>', unsafe_allow_html=True)
+        default_project = st.session_state.last_payment['project']
+        default_villa = st.session_state.last_payment['villa']
+        default_amount = st.session_state.last_payment['amount']
+        default_payment_order = st.session_state.last_payment['payment_order']
+    else:
+        default_project = sorted(set(k[0] for k in VILLA_OWNERS))[0]
+        default_villa = None
+        default_amount = ""
+        default_payment_order = ""
+    
+    col1, col2 = st.columns([3, 2])
+    
+    with col1:
+        # Invoice details
+        invoice_project = st.selectbox(
+            "Project",
+            sorted(set(k[0] for k in VILLA_OWNERS)),
+            index=sorted(set(k[0] for k in VILLA_OWNERS)).index(default_project) if default_project else 0,
+            key="invoice_project"
+        )
+        
+        villa_options_invoice = sorted(set(k[1] for k in VILLA_OWNERS if k[0] == invoice_project))
+        invoice_villa = st.selectbox(
+            "Villa",
+            villa_options_invoice,
+            key="invoice_villa"
+        )
+        
+        invoice_client = VILLA_OWNERS.get((invoice_project, invoice_villa), "")
+        if invoice_client:
+            st.markdown(f'<div class="info-msg">👤 <strong>Client:</strong> {invoice_client}</div>', unsafe_allow_html=True)
+        
+        invoice_number = st.text_input("Invoice Number", value=default_payment_order, placeholder="INV-001", key="invoice_number")
+        invoice_amount = st.text_input("Amount (€)", value=default_amount, placeholder="5000", key="invoice_amount")
+        invoice_date = st.date_input("Invoice Date", value=datetime.date.today(), key="invoice_date")
+        invoice_notes = st.text_area("Notes/Description", placeholder="Payment received for...", key="invoice_notes")
+    
+    with col2:
+        st.markdown("### 📊 Invoice Preview")
+        if invoice_number and invoice_amount:
+            st.markdown(f"""
+            **Invoice #:** {invoice_number}  
+            **Date:** {invoice_date}  
+            **Client:** {invoice_client}  
+            **Project:** {invoice_project} - {invoice_villa}  
+            **Amount:** €{invoice_amount}  
+            """)
+    
+    # Generate invoice button
+    if st.button("🧾 Generate Invoice", use_container_width=True, key="generate_invoice"):
+        if invoice_number and invoice_amount:
+            # Add to invoices database
+            invoice_data = {
+                "invoice_number": invoice_number,
+                "date": str(invoice_date),
+                "project": invoice_project,
+                "villa": invoice_villa,
+                "client": invoice_client,
+                "amount": invoice_amount,
+                "notes": invoice_notes,
+                "timestamp": datetime.datetime.now().isoformat()
+            }
+            
+            st.session_state.invoices_db.append(invoice_data)
+            
+            # Also add to receipts database
+            receipt_data = {
+                "type": "Invoice",
+                "number": invoice_number,
+                "date": str(invoice_date),
+                "project": invoice_project,
+                "villa": invoice_villa,
+                "client": invoice_client,
+                "amount": invoice_amount,
+                "notes": invoice_notes,
+                "timestamp": datetime.datetime.now().isoformat()
+            }
+            st.session_state.receipts_db.append(receipt_data)
+            
+            st.markdown('<div class="success-msg">✅ Invoice generated and saved to database!</div>', unsafe_allow_html=True)
+            
+            # Create downloadable invoice (simplified version)
+            invoice_content = f"""
 INVOICE
 ========================================
 Invoice Number: {invoice_number}
@@ -1295,20 +1257,19 @@ Notes:
 {invoice_notes}
 ========================================
 Generated by Aiolos Financial Tools
-        """
-
-        st.download_button(
-            label="📥 Download Invoice (Text)",
-            data=invoice_content,
-            file_name=f"Invoice_{invoice_number}_{invoice_date}.txt",
-            mime="text/plain",
-            use_container_width=True
-        )
-    else:
-        st.warning("⚠️ Please fill in Invoice Number and Amount")
-
-st.markdown('</div>', unsafe_allow_html=True)
-
+            """
+            
+            st.download_button(
+                label="📥 Download Invoice (Text)",
+                data=invoice_content,
+                file_name=f"Invoice_{invoice_number}_{invoice_date}.txt",
+                mime="text/plain",
+                use_container_width=True
+            )
+        else:
+            st.warning("⚠️ Please fill in Invoice Number and Amount")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ============================================
 # TAB 4: RECEIPTS DATABASE
