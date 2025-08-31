@@ -339,6 +339,39 @@ st.markdown("""
 # ============================================
 # HELPER FUNCTIONS
 # ============================================
+
+# --- DOCX → PDF helper (tries docx2pdf, then LibreOffice) ---
+def docx_bytes_to_pdf_bytes(docx_bytes: bytes):
+    import tempfile, os, shutil, subprocess
+    tmpdir = tempfile.mkdtemp()
+    try:
+        docx_path = os.path.join(tmpdir, "tmp.docx")
+        with open(docx_path, "wb") as f:
+            f.write(docx_bytes)
+
+        # ניסיון 1: docx2pdf (Windows/Mac, וגם חלק מסביבות לינוקס)
+        try:
+            import docx2pdf
+            pdf_path = os.path.join(tmpdir, "tmp.pdf")
+            docx2pdf.convert(docx_path, pdf_path)
+            with open(pdf_path, "rb") as f:
+                return f.read()
+        except Exception:
+            pass
+
+        # ניסיון 2: LibreOffice headless
+        try:
+            cmd = ["soffice", "--headless", "--convert-to", "pdf", docx_path, "--outdir", tmpdir]
+            subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            pdf_path = os.path.join(tmpdir, "tmp.pdf")
+            with open(pdf_path, "rb") as f:
+                return f.read()
+        except Exception:
+            return None
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
 def find_all_plots(description):
     """Find all plot references in description"""
     PLOTS = [
