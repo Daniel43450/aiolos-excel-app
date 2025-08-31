@@ -1088,7 +1088,7 @@ with tab2:
         st.markdown("### 📄 Template Preview")
         st.markdown("See how your payment instruction will look:")
         # Show template preview image from GitHub
-        st.image("https://raw.githubusercontent.com/Daniel43450/aiolos-excel-app/main/default_template.pdf", 
+        st.image("https://raw.githubusercontent.com/Daniel43450/aiolos-excel-app/main/payment_order_PNG.png", 
                  caption="Payment Instruction Template",
                  use_column_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
