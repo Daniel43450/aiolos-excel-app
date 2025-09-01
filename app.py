@@ -467,7 +467,7 @@ def process_diakofti_file(df):
             entry["Description"] = "Bank fees"
             filled = True
 
-        if "ARID" in payment_details:
+        if "ARID" in desc.upper():
             entry["Type"] = "Architect"
             entry["Supplier"] = "ARID"
             entry["Description"] = "Planning"
