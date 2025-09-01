@@ -890,6 +890,14 @@ def process_athens_file(df):
             entry["Description"] = "Parking"
             filled = True
 
+        if "kallifrona 3 ekmetalleysi akiniton" in desc.lower() and amount == 2450:
+            entry["Location"] = "Mobee"
+            entry["Project"] = "Mobee"
+            entry["Supplier"] = "Kalliforna"
+            entry["Type"] = "Mobee Management"
+            entry["Description"] = "Management fee"
+            filled = True
+
         if "ECOVIS" in desc:
             entry["Type"] = "Ecovis"
             entry["Supplier"] = "Accountant"
