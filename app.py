@@ -467,6 +467,13 @@ def process_diakofti_file(df):
             entry["Description"] = "Bank fees"
             filled = True
 
+        if "PANAYOTIS" in desc.upper():
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Panayotis"
+            entry["Description"] = "Car rent fees"
+            filled = True
+
+
         if "EDEN" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Accommodation"
