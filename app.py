@@ -942,6 +942,12 @@ def process_athens_file(df):
             entry["Description"] = "Flight"
             filled = True
 
+        if ("ΠΛΗΡΩΜΗ ΒΕΒΑΙΩΜΕΝΕΣ ΣΤΙΣ Δ.Ο.Υ. ΟΦΕΙΛΕΣ" in desc and (amount == 76.66 or amount == -76.66)):
+            entry["Supplier"] = "Greek Tax Office"
+            entry["Type"] = "Tax Payment"
+            entry["Description"] = "DOY Confirmed Payment"
+            filled = True
+
         if "PARKAROUND" in desc:
             entry["Type"] = "Transportation"
             entry["Supplier"] = "Parking"
