@@ -706,6 +706,14 @@ def process_diakofti_file(df):
             entry["Description"] = "Phone bill"
             filled = True
 
+        if "RF389086180000334" in desc:
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            entry["Plot"] = "Y3"
+            filled = True
+
+
 
         # END OF DIAKOFTI RULES
         # ============================================
