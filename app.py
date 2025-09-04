@@ -1065,6 +1065,15 @@ def process_ilisia_file(df):
             entry["Description"] = "Monthly Taverne rent"
             filled = True
 
+        if any(term in desc.upper() for term in ["TRANSFER BETWEEN ACCOUNTS", "NBG TO EURO"]):
+            entry["Plot"] = "G1 - Manolis"
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
+
+
         if "ARID" in desc.upper():
             entry["Type"] = "Architect"
             entry["Supplier"] = "ARID"
