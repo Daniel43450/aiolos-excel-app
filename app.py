@@ -1025,7 +1025,7 @@ def process_ilisia_file(df):
         elif len(plots) > 1:
             plot_val = "Multiple"
         else:
-            plot_val = "All Plots"
+            plot_val = "G1 - Manolis"
         
         is_income = row['ΠΟΣΟ'] > 0
         
