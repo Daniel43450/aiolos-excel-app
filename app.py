@@ -1079,6 +1079,13 @@ def process_ilisia_file(df):
             entry["Description"] = "Maintenance"
             filled = True
 
+        if "WATT-VOLT" in desc.upper():
+            entry["Type"] = "Authorities"
+            entry["Supplier"] = "Electricity"
+            entry["Description"] = "Electricity"
+            filled = True
+
+
 
 
         if "ARID" in desc.upper():
