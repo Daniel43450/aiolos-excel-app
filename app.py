@@ -6,7 +6,7 @@ from io import BytesIO
 from docx import Document
 import json
 import os
-from PIL import Image  # ← חדש
+from PIL import Image  
 
 # ============================================
 # PAGE CONFIGURATION
