@@ -1057,6 +1057,14 @@ def process_ilisia_file(df):
             entry["Description"] = "Bank fees"
             filled = True
 
+        if "STAMATIS PANAGIOTIS STAVRO" in desc.upper():
+            entry["Plot"] = "G1 - Manolis"
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Rent"
+            entry["Supplier"] = "Tenant - Taverne"
+            entry["Description"] = "Monthly Taverne rent"
+            filled = True
+
         if "ARID" in desc.upper():
             entry["Type"] = "Architect"
             entry["Supplier"] = "ARID"
