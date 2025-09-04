@@ -1322,9 +1322,9 @@ def process_ilisia_file(df):
             filled = True
 
         if any(term in desc for term in ["COSM", "COSMOTE", "PHONE"]):
-            entry["Type"] = "Utility Bills"
+            entry["Type"] = "Hotel operation"
             entry["Supplier"] = "Cosmote"
-            entry["Description"] = "Phone bill"
+            entry["Description"] = "Telephone"
             filled = True
 
         if "RF389086180000334" in desc:
