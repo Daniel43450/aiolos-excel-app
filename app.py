@@ -1233,7 +1233,7 @@ def process_ilisia_file(df):
             filled = True
 
 
-        if "GOOGLE" in desc:
+        if "GOOGLE" in desc or "ΣΥΝΔΡΟΜΗ ADVANCED FOR BUSINES" in desc:
             entry["Type"] = "Marketing"
             entry["Supplier"] = "Marketing"
             entry["Description"] = "Marketing Services fee"
