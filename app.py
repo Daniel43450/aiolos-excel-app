@@ -1039,6 +1039,7 @@ def process_ilisia_file(df):
             "Description": desc,
             "In": amount if is_income else "",
             "Out": -amount if not is_income else "",
+            "Vat": "" ,
             "Total": amount if is_income else -amount,
             "Progressive Ledger Balance": "",
             "Payment details": "",
