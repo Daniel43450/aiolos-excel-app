@@ -1073,6 +1073,13 @@ def process_ilisia_file(df):
             entry["Description"] = "Accommodation fees"
             filled = True
 
+        if "ZARA" in desc.upper():
+            entry["Type"] = "Hotel operation"
+            entry["Supplier"] = "Maintenance"
+            entry["Description"] = "Maintenance"
+            filled = True
+
+
 
         if "ARID" in desc.upper():
             entry["Type"] = "Architect"
