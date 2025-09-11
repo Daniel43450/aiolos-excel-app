@@ -2521,6 +2521,14 @@ with tab6:
     3. **Generate**: Create invoice and save to database
     4. **Download**: Get a copy for your records
     
+    #### 💰 Penalty Calculator
+    1. **Set Dates**: Enter the original delivery date and actual delivery date  
+    2. **Grace Period**: Define the number of grace days (no penalties)  
+    3. **Penalty Rates**: Adjust penalty rates per villa for each month  
+    4. **Calculate**: Click "Calculate Penalties" to generate the daily penalty table  
+    5. **Review Table**: View status by day (Grace / Penalty) and cumulative fines  
+    6. **Export**: Download results to Excel (CSV) or PDF report  
+
     #### 📋 Receipts Database
     1. **View All**: See all payment instructions and invoices
     2. **Filter**: Filter by project, villa, or type
