@@ -1350,11 +1350,12 @@ def process_ilisia_file(df):
 # ============================================
 # MAIN TABS
 # ============================================
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📊 Excel Classifier", 
     "📝 Payment Instructions", 
     "🧾 Invoices",
     "📋 Receipts Database",
+    "📅 Delay Penalties",
     "ℹ️ Help"
 ])
 
@@ -2104,9 +2105,398 @@ with tab4:
 
 
 # ============================================
-# TAB 5: HELP
+# TAB 5: DELAY PENALTIES CALCULATOR
 # ============================================
+
 with tab5:
+    st.markdown('<div class="info-card">', unsafe_allow_html=True)
+    st.markdown("### ⏱️ Delay Penalties Calculator")
+
+    # ---------- Imports for PDF ----------
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import mm
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+        REPORTLAB_OK = True
+    except Exception as _e:
+        REPORTLAB_OK = False
+        reportlab_err = str(_e)
+
+    # ---------- Helpers ----------
+    MONTH_NAMES = {
+        1: "January", 2: "February", 3: "March", 4: "April",
+        5: "May", 6: "June", 7: "July", 8: "August",
+        9: "September", 10: "October", 11: "November", 12: "December"
+    }
+    DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+    def _default_monthly_rates():
+        return {
+            1: 75.0, 2: 75.0, 3: 75.0, 4: 75.0, 5: 75.0,
+            6: 175.0, 7: 250.0, 8: 250.0, 9: 175.0, 10: 75.0, 11: 75.0, 12: 75.0
+        }
+
+    def _compute_penalties(original_date, actual_date, grace_days, villas, monthly_rates, exclude_saturday, currency_symbol):
+        rows = []
+        cur = original_date
+        grace_end = original_date + datetime.timedelta(days=grace_days)
+        cumulative = 0.0
+
+        while cur <= actual_date:
+            weekday_idx = cur.weekday()  # Mon=0..Sun=6
+            weekday_for_table = (weekday_idx + 1) % 7  # Sun=0..Sat=6
+
+            in_grace = cur <= grace_end
+            is_saturday = weekday_for_table == 6
+            month_idx = cur.month
+            per_villa_rate = 0.0 if in_grace or (exclude_saturday and is_saturday) else float(monthly_rates.get(month_idx, 0.0))
+            daily_total = per_villa_rate * villas
+            if not in_grace and not (exclude_saturday and is_saturday):
+                cumulative += daily_total
+
+            if cur < original_date:
+                status = "Before original date"
+            elif in_grace:
+                status = "Grace period"
+            elif exclude_saturday and is_saturday:
+                status = "Excluded (Saturday)"
+            else:
+                status = "Penalty period"
+
+            rows.append({
+                "Date": cur.strftime("%d/%m/%Y"),
+                "Weekday": DAY_NAMES[weekday_for_table],
+                "Month": MONTH_NAMES[month_idx],
+                "Status": status,
+                "Per-villa daily": f"{currency_symbol}{per_villa_rate:,.2f}",
+                "Daily total": f"{currency_symbol}{daily_total:,.2f}",
+                "Cumulative": f"{currency_symbol}{cumulative:,.2f}",
+            })
+            cur += datetime.timedelta(days=1)
+
+        df = pd.DataFrame(rows)
+
+        total_days_late = max(0, (actual_date - original_date).days)
+        grace_len = max(0, (grace_end - original_date).days)
+        penalty_days = max(0, total_days_late - grace_len)
+        total_penalty_val = cumulative
+
+        return df, {
+            "original": original_date.strftime("%d/%m/%Y"),
+            "actual": actual_date.strftime("%d/%m/%Y"),
+            "days_late": total_days_late,
+            "grace_days": grace_len,
+            "penalty_days": penalty_days,
+            "villas": villas,
+            "total_penalty": f"{currency_symbol}{total_penalty_val:,.2f}",
+        }
+
+    def _to_csv_bytes(df, header_rows):
+        from io import StringIO
+        sio = StringIO()
+        sio.write("\ufeff")
+        for k, v in header_rows:
+            sio.write(f"{k},{v}\n")
+        sio.write("\n")
+        df.to_csv(sio, index=False)
+        return sio.getvalue().encode("utf-8")
+
+    def _printable_html(df, summary, monthly_rates, currency_symbol):
+        rates_html = "".join(
+            f"<div style='background:#f8f9fa;padding:8px;border-radius:4px;text-align:center;border:1px solid #eee;'>"
+            f"<strong>{MONTH_NAMES[m]}:</strong> {currency_symbol}{monthly_rates[m]:,.2f}</div>"
+            for m in range(1, 13)
+        )
+        table_html = df.to_html(index=False, border=0, classes="dataframe", escape=False)
+        html = f"""
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<title>Delay Penalties Report</title>
+<style>
+body {{ font-family: Arial, sans-serif; margin: 20px; color: #222; }}
+h1 {{ text-align: center; color: #1e3c72; border-bottom: 2px solid #2a5298; padding-bottom: 10px; }}
+.section {{ background: #f8f9fa; padding: 14px; border-radius: 8px; border: 1px solid #eee; margin: 16px 0; }}
+.grid-6 {{ display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }}
+.summary {{ background: #1e3c72; color: white; padding: 14px; border-radius: 8px; margin: 16px 0; text-align: center; font-weight: bold; }}
+table.dataframe {{ width: 100%; border-collapse: collapse; font-size: 12px; }}
+table.dataframe th, table.dataframe td {{ border: 1px solid #ddd; padding: 6px; text-align: center; }}
+table.dataframe thead th {{ background: #2a5298; color: #fff; }}
+@media print {{
+  body {{ margin: 10mm; }}
+  table.dataframe {{ font-size: 10px; }}
+  table.dataframe th, table.dataframe td {{ padding: 4px; }}
+}}
+</style>
+</head>
+<body>
+  <h1>Delay Penalties Report</h1>
+
+  <div class="section">
+    <h3>Calculation Settings</h3>
+    <p><strong>Original delivery date:</strong> {summary["original"]}</p>
+    <p><strong>Actual delivery date:</strong> {summary["actual"]}</p>
+    <p><strong>Grace period (days):</strong> {summary["grace_days"]}</p>
+    <p><strong>Number of villas:</strong> {summary["villas"]}</p>
+    <p><strong>Currency:</strong> {currency_symbol}</p>
+    <h4>Monthly penalty rates (per day per villa)</h4>
+    <div class="grid-6">{rates_html}</div>
+  </div>
+
+  <div class="summary">
+    Total late days: {summary["days_late"]} &nbsp;|&nbsp;
+    Grace days: {summary["grace_days"]} &nbsp;|&nbsp;
+    Penalty days: {summary["penalty_days"]} &nbsp;|&nbsp;
+    <strong>Total penalty: {summary["total_penalty"]}</strong>
+  </div>
+
+  {table_html}
+
+  <p style="text-align:center;color:#666;margin-top:20px;">Generated on: {datetime.datetime.now().strftime("%d/%m/%Y %H:%M")}</p>
+</body>
+</html>
+"""
+        return html
+
+    def _to_pdf_bytes(df, summary, monthly_rates, currency_symbol):
+        """Create a nicely formatted PDF with ReportLab."""
+        if not REPORTLAB_OK:
+            raise RuntimeError(f"reportlab is not available: {reportlab_err}")
+
+        buf = BytesIO()
+        doc = SimpleDocTemplate(
+            buf,
+            pagesize=A4,
+            leftMargin=15*mm, rightMargin=15*mm,
+            topMargin=15*mm, bottomMargin=15*mm
+        )
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            "Title",
+            parent=styles["Title"],
+            textColor=colors.HexColor("#1e3c72"),
+            fontSize=20,
+            leading=24,
+            alignment=1  # center
+        )
+        h3_style = ParagraphStyle("H3", parent=styles["Heading3"], textColor=colors.HexColor("#2a5298"))
+        normal = styles["Normal"]
+
+        story = []
+        story.append(Paragraph("Delay Penalties Report", title_style))
+        story.append(Spacer(1, 6))
+
+        # Summary box
+        summary_text = (
+            f"<b>Original delivery date:</b> {summary['original']} &nbsp;&nbsp; "
+            f"<b>Actual delivery date:</b> {summary['actual']} &nbsp;&nbsp; "
+            f"<b>Grace days:</b> {summary['grace_days']} &nbsp;&nbsp; "
+            f"<b>Penalty days:</b> {summary['penalty_days']} &nbsp;&nbsp; "
+            f"<b>Villas:</b> {summary['villas']} &nbsp;&nbsp; "
+            f"<b>Total penalty:</b> {summary['total_penalty']}"
+        )
+        story.append(Paragraph(summary_text, normal))
+        story.append(Spacer(1, 10))
+
+        # Monthly rates table
+        story.append(Paragraph("Monthly penalty rates (per day per villa)", h3_style))
+        rates_data = [["Month", "Rate"]]
+        for m in range(1, 13):
+            rates_data.append([MONTH_NAMES[m], f"{currency_symbol}{monthly_rates[m]:,.2f}"])
+        rates_tbl = Table(rates_data, colWidths=[60*mm, 40*mm])
+        rates_tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#2a5298")),
+            ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+            ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+            ("ALIGN", (0,0), (-1,0), "CENTER"),
+            ("GRID", (0,0), (-1,-1), 0.25, colors.grey),
+            ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.whitesmoke, colors.HexColor("#f8f9fa")]),
+        ]))
+        story.append(rates_tbl)
+        story.append(Spacer(1, 10))
+
+        # Daily breakdown table
+        story.append(Paragraph("Daily breakdown", h3_style))
+
+        # Convert df to raw data for table
+        headers = list(df.columns)
+        data = [headers] + df.values.tolist()
+
+        # Limit rows to keep PDF size reasonable. Adjust if needed.
+        MAX_ROWS = 1500
+        if len(data) > MAX_ROWS + 1:
+            data = data[:MAX_ROWS + 1]
+
+        # Wider page table
+        col_widths = [24*mm, 24*mm, 28*mm, 40*mm, 28*mm, 28*mm, 30*mm]
+        tbl = Table(data, colWidths=col_widths, repeatRows=1)
+        tbl_style = TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#2a5298")),
+            ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+            ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+            ("ALIGN", (0,0), (-1,0), "CENTER"),
+            ("GRID", (0,0), (-1,-1), 0.25, colors.grey),
+            ("FONTSIZE", (0,0), (-1,-1), 8),
+            ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ])
+        tbl.setStyle(tbl_style)
+        story.append(tbl)
+
+        doc.build(story)
+        buf.seek(0)
+        return buf.getvalue()
+
+    # ---------- UI ----------
+    c1, c2 = st.columns([2, 1])
+    with c1:
+        st.markdown("#### General Settings")
+        left, right = st.columns(2)
+        with left:
+            original_date = st.date_input("Original delivery date", value=datetime.date(2025, 6, 1), key="pen_original_date")
+            grace_days = st.number_input("Grace period (days)", min_value=0, value=61, step=1, key="pen_grace")
+            villas = st.number_input("Number of villas", min_value=1, value=8, step=1, key="pen_villas")
+        with right:
+            actual_date = st.date_input("Actual delivery date", value=datetime.date(2025, 10, 1), key="pen_actual_date")
+            currency_symbol = st.selectbox("Currency", ["€", "₪", "$"], index=0, key="pen_currency")
+            exclude_saturday = st.checkbox("Exclude Saturdays from penalty", value=False, key="pen_ex_sat")
+
+        st.markdown("#### Monthly penalty rates (per day per villa)")
+        rates_grid1, rates_grid2, rates_grid3, rates_grid4, rates_grid5, rates_grid6 = st.columns(6)
+        if "pen_rates" not in st.session_state:
+            st.session_state.pen_rates = _default_monthly_rates()
+        for idx, col in enumerate([rates_grid1, rates_grid2, rates_grid3, rates_grid4, rates_grid5, rates_grid6], start=1):
+            with col:
+                for m in range(idx, 13, 6):  # 1,7 ; 2,8 ; ...
+                    st.session_state.pen_rates[m] = st.number_input(
+                        f"{MONTH_NAMES[m]}",
+                        min_value=0.0, step=1.0, value=float(st.session_state.pen_rates[m]),
+                        key=f"pen_rate_{m}"
+                    )
+
+    with c2:
+        st.markdown("#### Actions")
+        calc_btn = st.button("🔄 Calculate penalties", use_container_width=True, key="pen_calc_btn")
+        metrics_box = st.empty()
+
+    st.markdown("---")
+
+    # Run calculation on click or first render
+    if calc_btn or "pen_last_df" not in st.session_state:
+        try:
+            df, summary = _compute_penalties(
+                original_date,
+                actual_date,
+                grace_days,
+                villas,
+                st.session_state.pen_rates,
+                exclude_saturday,
+                currency_symbol
+            )
+            st.session_state.pen_last_df = df
+            st.session_state.pen_last_summary = summary
+        except Exception as e:
+            st.error(f"Calculation error: {e}")
+
+    if "pen_last_df" in st.session_state:
+        df = st.session_state.pen_last_df
+        summary = st.session_state.pen_last_summary
+
+        # Metrics
+        with c2:
+            with metrics_box.container():
+                st.markdown("""
+                <div class="metric-container">
+                    <div class="metric-box">
+                        <div class="metric-value">{days}</div>
+                        <div class="metric-label">Total Late Days</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-value">{grace}</div>
+                        <div class="metric-label">Grace Days</div>
+                    </div>
+                    <div class="metric-box">
+                        <div class="metric-value">{pen}</div>
+                        <div class="metric-label">Penalty Days</div>
+                    </div>
+                </div>
+                """.format(
+                    days=summary["days_late"],
+                    grace=summary["grace_days"],
+                    pen=summary["penalty_days"]
+                ), unsafe_allow_html=True)
+
+        st.markdown(f"""
+        <div class="info-msg">Original: <strong>{summary["original"]}</strong> &nbsp;|&nbsp;
+        Actual: <strong>{summary["actual"]}</strong> &nbsp;|&nbsp;
+        Villas: <strong>{summary["villas"]}</strong> &nbsp;|&nbsp;
+        <span style="color:#1e3c72;">Total penalty: <strong>{summary["total_penalty"]}</strong></span></div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("#### Daily breakdown")
+        st.dataframe(df, use_container_width=True)
+
+        # Downloads
+        st.markdown("---")
+        st.markdown("### 📥 Export")
+        colA, colB, colC = st.columns(3)
+
+        with colA:
+            header_rows = [
+                ("Original delivery date", summary["original"]),
+                ("Actual delivery date", summary["actual"]),
+                ("Grace period (days)", summary["grace_days"]),
+                ("Penalty days", summary["penalty_days"]),
+                ("Number of villas", summary["villas"]),
+                ("Currency", currency_symbol),
+                ("Total penalty", summary["total_penalty"]),
+            ]
+            csv_bytes = _to_csv_bytes(df, header_rows)
+            st.download_button(
+                label="📊 Download CSV",
+                data=csv_bytes,
+                file_name=f"delay_penalties_{actual_date.strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+
+        with colB:
+            html_str = _printable_html(df, summary, st.session_state.pen_rates, currency_symbol)
+            html_bytes = html_str.encode("utf-8")
+            st.download_button(
+                label="🖨️ Download print view (HTML)",
+                data=html_bytes,
+                file_name=f"delay_penalties_{actual_date.strftime('%Y%m%d')}.html",
+                mime="text/html",
+                use_container_width=True
+            )
+            st.caption("Open the HTML and use your browser Print to save as PDF.")
+
+        with colC:
+            if REPORTLAB_OK:
+                try:
+                    pdf_bytes = _to_pdf_bytes(df, summary, st.session_state.pen_rates, currency_symbol)
+                    st.download_button(
+                        label="📄 Download PDF",
+                        data=pdf_bytes,
+                        file_name=f"delay_penalties_{actual_date.strftime('%Y%m%d')}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+                except Exception as e:
+                    st.error(f"PDF generation error: {e}")
+            else:
+                st.warning("PDF export requires reportlab. Add to requirements: reportlab==3.6.13")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+# ============================================
+# TAB 6: HELP
+# ============================================
+with tab6:
     st.markdown('<div class="info-card">', unsafe_allow_html=True)
     st.markdown("### 🔧 How to Use Aiolos Financial Tools")
     
