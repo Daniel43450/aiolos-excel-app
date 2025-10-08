@@ -473,7 +473,7 @@ def process_diakofti_file(df):
             entry["Description"] = "Construction works"
             filled = True
 
-        if "STAVROU" in desc.upper() or "SKANDIA" in desc.upper() or "PLATANOS" in desc.upper():
+        if "STAVROU" in desc.upper() or "SKANDIA" in desc.upper() or "PLATANOS" in desc.upper() or "TO LIMAN KYTHI GR" in desc.upper():
             entry["Type"] = "General"
             entry["Supplier"] = "F&B"
             entry["Description"] = "F&B"
