@@ -473,6 +473,24 @@ def process_diakofti_file(df):
             entry["Description"] = "Planning"
             filled = True
 
+        if "HERTZ" in desc.upper():
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Panayotis"
+            entry["Description"] = "Car rent fees"
+            filled = True
+
+        if "AVIS" in desc.upper():
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Panayotis"
+            entry["Description"] = "Car rent fees"
+            filled = True
+
+        if "SIXT" in desc.upper():
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Panayotis"
+            entry["Description"] = "Car rent fees"
+            filled = True
+
         if "PANAYOTIS" in desc.upper():
             entry["Type"] = "Project management"
             entry["Supplier"] = "Panayotis"
