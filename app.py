@@ -715,6 +715,12 @@ def process_diakofti_file(df):
             entry["Description"] = "Athens Taxi"
             filled = True
 
+        if "BEAUTIFU SAN" in desc.upper():
+            entry["Type"] = "General"
+            entry["Supplier"] = "BEAUTIFUL"
+            entry["Description"] = "Office expense"
+            filled = True
+
         if "OPENAI" in desc:
             entry["Type"] = "General"
             entry["Supplier"] = "Office expenses"
