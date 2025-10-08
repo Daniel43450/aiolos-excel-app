@@ -479,6 +479,14 @@ def process_diakofti_file(df):
             entry["Description"] = "F&B"
             filled = True
 
+        if "RF549086180000334044" in desc.upper():
+            entry["Plot"] = "G2"
+            entry["Expenses Ty"] = "Soft Cost"
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            filled = True
+
         if "MOREAS S" in desc.upper():
             entry["Type"] = "Project management"
             entry["Supplier"] = "Transportation"
