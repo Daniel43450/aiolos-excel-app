@@ -467,6 +467,19 @@ def process_diakofti_file(df):
             entry["Description"] = "Bank fees"
             filled = True
 
+        if "ELECTRICAL INSTALLATION" in desc.upper():
+            entry["Type"] = "Electricity"
+            entry["Supplier"] = "Engineer"
+            entry["Description"] = "Construction works"
+            filled = True
+
+        if "CANVA" in desc.upper():
+            entry["Type"] = "General"
+            entry["Supplier"] = "Office expenses"
+            entry["Description"] = "Office expense"
+            entry["Payment details"] = "CANVA"  
+            filled = True
+
         if "ARID" in desc.upper():
             entry["Type"] = "Architect"
             entry["Supplier"] = "ARID"
