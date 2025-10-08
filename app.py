@@ -479,6 +479,12 @@ def process_diakofti_file(df):
             entry["Description"] = "F&B"
             filled = True
 
+        if "MOREAS S" in desc.upper():
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Transportation"
+            filled = True
+
         if "CANVA" in desc.upper():
             entry["Type"] = "General"
             entry["Supplier"] = "Office expenses"
