@@ -837,6 +837,12 @@ def process_athens_file(df):
             entry["Description"] = "TEKA"
             filled = True
 
+        if any(keyword in desc.upper() for keyword in ["FACEBOOK", "FACEBK", "FB.ME", "META"]):
+            entry["Supplier"] = "Marketing"
+            entry["Type"] = "Marketing"
+            entry["Description"] = "Marketing Services fee"
+            filled = True
+
         if "BAGELDB" in desc:
             entry["Type"] = "Marketing"
             entry["Supplier"] = "BagelDB"
