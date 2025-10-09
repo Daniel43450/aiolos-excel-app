@@ -871,7 +871,7 @@ def process_athens_file(df):
             filled = True
 
            
-        if any(word in desc for word in ["BAKERY", "CAFFE", "CAFE", "EAT", "BEVERAGE", "PIZA", "BURGER"]):
+        if any(word in desc for word in ["BAKERY","KENTRIKI ENOSI EPIME", "CAFFE", "CAFE", "EAT", "BEVERAGE", "PIZA", "BURGER"]):
             entry["Type"] = "F&B"
             entry["Supplier"] = "General"
             entry["Description"] = "F&B"
