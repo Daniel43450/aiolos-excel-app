@@ -912,3 +912,1314 @@ export default function TaskFlow() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+########################################3
+
+import React, { useState, useEffect } from 'react';
+import { Plus, GripVertical, Check, Clock, History, Calendar, Play, Pause, Square } from 'lucide-react';
+
+export default function TaskFlow() {
+  const [currentView, setCurrentView] = useState('today');
+  const [tasks, setTasks] = useState(() => {
+    const saved = localStorage.getItem('tasks');
+    return saved ? JSON.parse(saved) : [
+      { id: 1, name: 'Fill Diacopti Excel', duration: 30, completed: false, actualTime: null },
+      { id: 2, name: 'Fill Elysia Excel', duration: 25, completed: false, actualTime: null },
+      { id: 3, name: 'Fill Aeolos Athens Excel', duration: 20, completed: false, actualTime: null },
+      { id: 4, name: 'Fill Naples Excel', duration: 20, completed: false, actualTime: null },
+      { id: 5, name: 'Reset Elysia Excel against Anna\'s Excel', duration: 35, completed: false, actualTime: null },
+      { id: 6, name: 'Prepare Pivot Table report for Elysia', duration: 40, completed: false, actualTime: null },
+      { id: 7, name: 'Make final payments in all banks', duration: 30, completed: false, actualTime: null },
+      { id: 8, name: 'Improve Diacopti Pivot Table (graphs)', duration: 45, completed: false, actualTime: null }
+    ];
+  });
+  const [history, setHistory] = useState(() => {
+    const saved = localStorage.getItem('history');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [lastSaveDate, setLastSaveDate] = useState(() => {
+    return localStorage.getItem('lastSaveDate') || new Date().toDateString();
+  });
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newTaskName, setNewTaskName] = useState('');
+  const [newTaskDuration, setNewTaskDuration] = useState('');
+  const [draggedTask, setDraggedTask] = useState(null);
+  const [editingTask, setEditingTask] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editDuration, setEditDuration] = useState('');
+  const [editActualTime, setEditActualTime] = useState('');
+  const [editingTotalTime, setEditingTotalTime] = useState(false);
+  const [totalPlannedTime, setTotalPlannedTime] = useState(() => {
+    const saved = localStorage.getItem('totalPlannedTime');
+    return saved ? parseInt(saved) : 120;
+  });
+  const [tempTotalTime, setTempTotalTime] = useState(120);
+  const [timerTask, setTimerTask] = useState(null);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [selectedHistoryDate, setSelectedHistoryDate] = useState(null);
+
+  useEffect(() => {
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+  }, [tasks]);
+
+  useEffect(() => {
+    localStorage.setItem('history', JSON.stringify(history));
+  }, [history]);
+
+  useEffect(() => {
+    localStorage.setItem('totalPlannedTime', totalPlannedTime.toString());
+  }, [totalPlannedTime]);
+
+  useEffect(() => {
+    const currentDate = new Date().toDateString();
+    if (currentDate !== lastSaveDate) {
+      const completedToday = tasks.filter(t => t.completed);
+      if (completedToday.length > 0) {
+        const dayRecord = {
+          date: lastSaveDate,
+          completedTasks: completedToday,
+          totalPlanned: totalPlannedTime,
+          totalCompleted: completedToday.reduce((sum, t) => sum + (t.actualTime || t.duration), 0)
+        };
+        setHistory([dayRecord, ...history]);
+      }
+      const incompleteTasks = tasks.filter(t => !t.completed);
+      setTasks(incompleteTasks);
+      setLastSaveDate(currentDate);
+      localStorage.setItem('lastSaveDate', currentDate);
+    }
+  }, [tasks, lastSaveDate, history, totalPlannedTime]);
+
+  useEffect(() => {
+    let interval;
+    if (timerRunning) {
+      interval = setInterval(() => {
+        setTimerSeconds(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [timerRunning]);
+
+  const today = new Date().toLocaleDateString('en-US', { 
+    weekday: 'long', 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric' 
+  });
+
+  const toggleTask = (id) => {
+    setTasks(tasks.map(task => 
+      task.id === id ? { ...task, completed: !task.completed } : task
+    ));
+  };
+
+  const addTask = () => {
+    if (newTaskName.trim() && newTaskDuration) {
+      const newTask = {
+        id: Date.now(),
+        name: newTaskName,
+        duration: parseInt(newTaskDuration),
+        completed: false,
+        actualTime: null
+      };
+      setTasks([...tasks, newTask]);
+      setNewTaskName('');
+      setNewTaskDuration('');
+      setShowAddForm(false);
+    }
+  };
+
+  const startEdit = (task) => {
+    setEditingTask(task.id);
+    setEditName(task.name);
+    setEditDuration(task.duration.toString());
+    setEditActualTime(task.actualTime ? task.actualTime.toString() : '');
+  };
+
+  const saveEdit = () => {
+    if (editingTask && editName.trim() && editDuration) {
+      setTasks(tasks.map(task => 
+        task.id === editingTask 
+          ? { 
+              ...task, 
+              name: editName, 
+              duration: parseInt(editDuration),
+              actualTime: editActualTime ? parseInt(editActualTime) : task.actualTime
+            }
+          : task
+      ));
+      setEditingTask(null);
+      setEditName('');
+      setEditDuration('');
+      setEditActualTime('');
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingTask(null);
+    setEditName('');
+    setEditDuration('');
+    setEditActualTime('');
+  };
+
+  const handleDragStart = (e, index) => {
+    setDraggedTask(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    if (draggedTask === null || draggedTask === index) return;
+    
+    const openTasks = tasks.filter(t => !t.completed);
+    const draggedItem = openTasks[draggedTask];
+    const newOpenTasks = openTasks.filter((_, i) => i !== draggedTask);
+    newOpenTasks.splice(index, 0, draggedItem);
+    
+    const completedTasks = tasks.filter(t => t.completed);
+    setTasks([...newOpenTasks, ...completedTasks]);
+    setDraggedTask(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedTask(null);
+  };
+
+  const startTimer = (taskId) => {
+    setTimerTask(taskId);
+    setTimerSeconds(0);
+    setTimerRunning(true);
+  };
+
+  const pauseTimer = () => {
+    setTimerRunning(false);
+  };
+
+  const resumeTimer = () => {
+    setTimerRunning(true);
+  };
+
+  const stopTimer = () => {
+    if (timerTask) {
+      const minutes = Math.round(timerSeconds / 60);
+      setTasks(tasks.map(task => 
+        task.id === timerTask ? { ...task, actualTime: minutes } : task
+      ));
+    }
+    setTimerTask(null);
+    setTimerSeconds(0);
+    setTimerRunning(false);
+  };
+
+  const formatTime = (seconds) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const getCalendarDays = () => {
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+    
+    const days = [];
+    for (let i = 1; i <= lastDay.getDate(); i++) {
+      const date = new Date(currentYear, currentMonth, i);
+      const dateStr = date.toDateString();
+      const hasHistory = history.some(h => h.date === dateStr);
+      days.push({ date, dateStr, hasHistory });
+    }
+    
+    return { days, firstDay: firstDay.getDay() };
+  };
+
+  const openTasks = tasks.filter(t => !t.completed);
+  const completedTasks = tasks.filter(t => t.completed);
+  
+  const totalCompleted = completedTasks.reduce((sum, t) => sum + (t.actualTime || t.duration), 0);
+  const progressPercent = totalPlannedTime > 0 ? Math.round((totalCompleted / totalPlannedTime) * 100) : 0;
+
+  return (
+    <div style={{ 
+      minHeight: '100vh', 
+      background: '#ffffff',
+      fontFamily: 'Inter, Segoe UI, sans-serif'
+    }}>
+      {/* Header */}
+      <div style={{
+        background: '#2665a9',
+        color: 'white',
+        padding: '24px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+      }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div>
+              <h1 style={{ margin: '0 0 8px 0', fontSize: '28px', fontWeight: '600' }}>Task Flow</h1>
+              <p style={{ margin: 0, opacity: 0.9, fontSize: '14px' }}>{today}</p>
+            </div>
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              style={{
+                background: 'white',
+                color: '#2665a9',
+                border: 'none',
+                borderRadius: '50%',
+                width: '48px',
+                height: '48px',
+                fontSize: '24px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                transition: 'transform 0.2s'
+              }}
+              onMouseEnter={e => e.target.style.transform = 'scale(1.05)'}
+              onMouseLeave={e => e.target.style.transform = 'scale(1)'}
+            >
+              <Plus size={24} />
+            </button>
+          </div>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={() => setCurrentView('today')}
+              style={{
+                background: currentView === 'today' ? 'white' : 'rgba(255,255,255,0.2)',
+                color: currentView === 'today' ? '#2665a9' : 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '15px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <Calendar size={18} />
+              Today
+            </button>
+            <button
+              onClick={() => setCurrentView('history')}
+              style={{
+                background: currentView === 'history' ? 'white' : 'rgba(255,255,255,0.2)',
+                color: currentView === 'history' ? '#2665a9' : 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '15px',
+                fontWeight: '500',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <History size={18} />
+              History
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px' }}>
+        {currentView === 'today' ? (
+          <>
+            {/* Add Task Form */}
+            {showAddForm && (
+              <div style={{
+                background: '#e6f0fa',
+                padding: '20px',
+                borderRadius: '12px',
+                marginBottom: '24px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+              }}>
+                <h3 style={{ margin: '0 0 16px 0', color: '#2665a9' }}>New Task</h3>
+                <input
+                  type="text"
+                  placeholder="Task name"
+                  value={newTaskName}
+                  onChange={(e) => setNewTaskName(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #ccc',
+                    borderRadius: '8px',
+                    marginBottom: '12px',
+                    fontSize: '15px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <input
+                  type="number"
+                  placeholder="Duration (minutes)"
+                  value={newTaskDuration}
+                  onChange={(e) => setNewTaskDuration(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #ccc',
+                    borderRadius: '8px',
+                    marginBottom: '12px',
+                    fontSize: '15px',
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    onClick={addTask}
+                    style={{
+                      flex: 1,
+                      background: '#2665a9',
+                      color: 'white',
+                      border: 'none',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '15px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    Add Task
+                  </button>
+                  <button
+                    onClick={() => setShowAddForm(false)}
+                    style={{
+                      flex: 1,
+                      background: '#ddd',
+                      color: '#333',
+                      border: 'none',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '15px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Timer Display */}
+            {timerTask && (
+              <div style={{
+                background: '#ffd700',
+                padding: '20px',
+                borderRadius: '12px',
+                marginBottom: '24px',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>
+                    ⏱️ Timer Running
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#666' }}>
+                    {tasks.find(t => t.id === timerTask)?.name}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  <div style={{ fontSize: '32px', fontWeight: '700', fontFamily: 'monospace' }}>
+                    {formatTime(timerSeconds)}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {timerRunning ? (
+                      <button
+                        onClick={pauseTimer}
+                        style={{
+                          background: '#ff9800',
+                          color: 'white',
+                          border: 'none',
+                          padding: '10px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Pause size={18} />
+                        Pause
+                      </button>
+                    ) : (
+                      <button
+                        onClick={resumeTimer}
+                        style={{
+                          background: '#4caf50',
+                          color: 'white',
+                          border: 'none',
+                          padding: '10px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <Play size={18} />
+                        Resume
+                      </button>
+                    )}
+                    <button
+                      onClick={stopTimer}
+                      style={{
+                        background: '#f44336',
+                        color: 'white',
+                        border: 'none',
+                        padding: '10px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Square size={18} />
+                      Stop
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Open Tasks */}
+            <div style={{ marginBottom: '32px' }}>
+              <h2 style={{ 
+                color: '#2665a9', 
+                fontSize: '20px', 
+                marginBottom: '16px',
+                fontWeight: '600'
+              }}>
+                📋 Open Tasks
+              </h2>
+              {openTasks.length === 0 ? (
+                <p style={{ color: '#666', textAlign: 'center', padding: '32px' }}>
+                  No open tasks 🎉
+                </p>
+              ) : (
+                openTasks.map((task, index) => (
+                  <div
+                    key={task.id}
+                    style={{
+                      background: index === 0 ? '#d4e6f7' : '#e6f0fa',
+                      padding: '16px',
+                      borderRadius: '12px',
+                      marginBottom: '12px',
+                      border: index === 0 ? '3px solid #2665a9' : '1px solid #cce0f5',
+                      boxShadow: index === 0 ? '0 4px 12px rgba(38,101,169,0.25)' : '0 2px 4px rgba(0,0,0,0.05)',
+                      transition: 'all 0.2s',
+                      position: 'relative'
+                    }}
+                  >
+                    {index === 0 && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '-12px',
+                        left: '16px',
+                        background: '#2665a9',
+                        color: 'white',
+                        padding: '4px 16px',
+                        borderRadius: '12px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.2)'
+                      }}>
+                        🎯 Now
+                      </div>
+                    )}
+                    {editingTask === task.id ? (
+                      <div>
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            border: '1px solid #ccc',
+                            borderRadius: '6px',
+                            marginBottom: '8px',
+                            fontSize: '15px',
+                            boxSizing: 'border-box'
+                          }}
+                          placeholder="Task name"
+                        />
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                          <input
+                            type="number"
+                            value={editDuration}
+                            onChange={(e) => setEditDuration(e.target.value)}
+                            style={{
+                              flex: 1,
+                              padding: '10px',
+                              border: '1px solid #ccc',
+                              borderRadius: '6px',
+                              fontSize: '15px',
+                              boxSizing: 'border-box'
+                            }}
+                            placeholder="Estimated time (min)"
+                          />
+                          <input
+                            type="number"
+                            value={editActualTime}
+                            onChange={(e) => setEditActualTime(e.target.value)}
+                            style={{
+                              flex: 1,
+                              padding: '10px',
+                              border: '1px solid #ccc',
+                              borderRadius: '6px',
+                              fontSize: '15px',
+                              boxSizing: 'border-box'
+                            }}
+                            placeholder="Actual time (min)"
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={saveEdit}
+                            style={{
+                              flex: 1,
+                              background: '#2665a9',
+                              color: 'white',
+                              border: 'none',
+                              padding: '10px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              fontWeight: '500'
+                            }}
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            style={{
+                              flex: 1,
+                              background: '#ddd',
+                              color: '#333',
+                              border: 'none',
+                              padding: '10px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              fontWeight: '500'
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, index)}
+                        onDragOver={(e) => handleDragOver(e, index)}
+                        onDragEnd={handleDragEnd}
+                        style={{ cursor: 'move' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <GripVertical size={20} color="#999" />
+                          <div style={{
+                            background: '#2665a9',
+                            color: 'white',
+                            borderRadius: '50%',
+                            width: '28px',
+                            height: '28px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            flexShrink: 0
+                          }}>
+                            {index + 1}
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={task.completed}
+                            onChange={() => toggleTask(task.id)}
+                            style={{
+                              width: '22px',
+                              height: '22px',
+                              cursor: 'pointer',
+                              accentColor: '#2665a9'
+                            }}
+                          />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ 
+                              fontSize: index === 0 ? '18px' : '16px', 
+                              color: '#333',
+                              fontWeight: index === 0 ? '600' : '400',
+                              marginBottom: '4px'
+                            }}>
+                              {task.name}
+                            </div>
+                          </div>
+                          <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            background: 'white',
+                            padding: '6px 12px',
+                            borderRadius: '20px',
+                            fontSize: '14px',
+                            color: '#2665a9',
+                            fontWeight: '500'
+                          }}>
+                            <Clock size={16} />
+                            {task.duration} min
+                          </div>
+                          {timerTask === task.id ? (
+                            <div style={{
+                              background: '#ffd700',
+                              padding: '6px 12px',
+                              borderRadius: '6px',
+                              fontSize: '13px',
+                              fontWeight: '600'
+                            }}>
+                              ⏱️ Timing
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => startTimer(task.id)}
+                              style={{
+                                background: '#4caf50',
+                                color: 'white',
+                                border: 'none',
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Play size={14} />
+                              Start
+                            </button>
+                          )}
+                          <button
+                            onClick={() => startEdit(task)}
+                            style={{
+                              background: 'white',
+                              border: '1px solid #2665a9',
+                              color: '#2665a9',
+                              padding: '6px 12px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '13px',
+                              fontWeight: '500'
+                            }}
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Completed Tasks */}
+            {completedTasks.length > 0 && (
+              <div style={{ marginBottom: '32px' }}>
+                <h2 style={{ 
+                  color: '#4caf50', 
+                  fontSize: '20px', 
+                  marginBottom: '16px',
+                  fontWeight: '600'
+                }}>
+                  ✅ Completed Tasks
+                </h2>
+                {completedTasks.map(task => (
+                  <div
+                    key={task.id}
+                    style={{
+                      background: '#f5f5f5',
+                      padding: '16px',
+                      borderRadius: '12px',
+                      marginBottom: '12px',
+                      border: '1px solid #e0e0e0'
+                    }}
+                  >
+                    {editingTask === task.id ? (
+                      <div>
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            border: '1px solid #ccc',
+                            borderRadius: '6px',
+                            marginBottom: '8px',
+                            fontSize: '15px',
+                            boxSizing: 'border-box'
+                          }}
+                          placeholder="Task name"
+                        />
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                          <input
+                            type="number"
+                            value={editDuration}
+                            onChange={(e) => setEditDuration(e.target.value)}
+                            style={{
+                              flex: 1,
+                              padding: '10px',
+                              border: '1px solid #ccc',
+                              borderRadius: '6px',
+                              fontSize: '15px',
+                              boxSizing: 'border-box'
+                            }}
+                            placeholder="Estimated time (min)"
+                          />
+                          <input
+                            type="number"
+                            value={editActualTime}
+                            onChange={(e) => setEditActualTime(e.target.value)}
+                            style={{
+                              flex: 1,
+                              padding: '10px',
+                              border: '1px solid #ccc',
+                              borderRadius: '6px',
+                              fontSize: '15px',
+                              boxSizing: 'border-box'
+                            }}
+                            placeholder="Actual time (min)"
+                          />
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            onClick={saveEdit}
+                            style={{
+                              flex: 1,
+                              background: '#2665a9',
+                              color: 'white',
+                              border: 'none',
+                              padding: '10px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              fontWeight: '500'
+                            }}
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            style={{
+                              flex: 1,
+                              background: '#ddd',
+                              color: '#333',
+                              border: 'none',
+                              padding: '10px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              fontWeight: '500'
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <input
+                          type="checkbox"
+                          checked={task.completed}
+                          onChange={() => toggleTask(task.id)}
+                          style={{
+                            width: '22px',
+                            height: '22px',
+                            cursor: 'pointer',
+                            accentColor: '#4caf50'
+                          }}
+                        />
+                        <Check size={20} color="#4caf50" />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ 
+                            fontSize: '16px', 
+                            color: '#666',
+                            textDecoration: 'line-through',
+                            marginBottom: task.actualTime ? '4px' : 0
+                          }}>
+                            {task.name}
+                          </div>
+                          {task.actualTime && (
+                            <div style={{ fontSize: '13px', color: '#4caf50', fontWeight: '500' }}>
+                              Actual time: {task.actualTime} min
+                              {task.actualTime !== task.duration && (
+                                <span style={{ marginLeft: '8px', color: task.actualTime > task.duration ? '#ff9800' : '#4caf50' }}>
+                                  ({task.actualTime > task.duration ? '+' : ''}{task.actualTime - task.duration} vs estimated)
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{
+                          fontSize: '14px',
+                          color: '#999',
+                          padding: '4px 10px',
+                          background: 'white',
+                          borderRadius: '12px'
+                        }}>
+                          Est: {task.duration} min
+                        </div>
+                        <button
+                          onClick={() => startEdit(task)}
+                          style={{
+                            background: 'white',
+                            border: '1px solid #999',
+                            color: '#666',
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: '500'
+                          }}
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Daily Summary */}
+            <div style={{
+              background: 'linear-gradient(135deg, #2665a9 0%, #1a4d7f 100%)',
+              color: 'white',
+              padding: '24px',
+              borderRadius: '12px',
+              boxShadow: '0 4px 12px rgba(38,101,169,0.2)'
+            }}>
+              <h2 style={{ 
+                fontSize: '20px', 
+                marginBottom: '16px',
+                fontWeight: '600'
+              }}>
+                📊 Daily Summary
+              </h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>
+                    Total Planned Time
+                  </div>
+                  {editingTotalTime ? (
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="number"
+                        value={tempTotalTime}
+                        onChange={(e) => setTempTotalTime(parseInt(e.target.value) || 0)}
+                        style={{
+                          width: '100px',
+                          padding: '8px',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '18px',
+                          fontWeight: '600'
+                        }}
+                      />
+                      <span style={{ fontSize: '16px' }}>min</span>
+                      <button
+                        onClick={() => {
+                          setTotalPlannedTime(tempTotalTime);
+                          setEditingTotalTime(false);
+                        }}
+                        style={{
+                          background: 'white',
+                          color: '#2665a9',
+                          border: 'none',
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: '500'
+                        }}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => {
+                        setTempTotalTime(totalPlannedTime);
+                        setEditingTotalTime(true);
+                      }}
+                      style={{ 
+                        fontSize: '24px', 
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'inline-block',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        transition: 'background 0.2s'
+                      }}
+                      onMouseEnter={e => e.target.style.background = 'rgba(255,255,255,0.1)'}
+                      onMouseLeave={e => e.target.style.background = 'transparent'}
+                    >
+                      {totalPlannedTime} min ✏️
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '4px' }}>
+                    Total Completed Time
+                  </div>
+                  <div style={{ fontSize: '24px', fontWeight: '600' }}>
+                    {totalCompleted} min
+                  </div>
+                </div>
+              </div>
+              <div style={{ marginTop: '16px' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between',
+                  fontSize: '14px',
+                  marginBottom: '8px'
+                }}>
+                  <span>Progress</span>
+                  <span>{progressPercent}%</span>
+                </div>
+                <div style={{
+                  background: 'rgba(255,255,255,0.3)',
+                  borderRadius: '10px',
+                  height: '20px',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    background: 'white',
+                    height: '100%',
+                    width: `${progressPercent}%`,
+                    transition: 'width 0.5s ease'
+                  }} />
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div>
+            <h2 style={{ 
+              color: '#2665a9', 
+              fontSize: '24px', 
+              marginBottom: '24px',
+              fontWeight: '600'
+            }}>
+              📜 History
+            </h2>
+            
+            {/* Calendar */}
+            <div style={{
+              background: '#f8f9fa',
+              padding: '24px',
+              borderRadius: '12px',
+              marginBottom: '24px',
+              border: '1px solid #e0e0e0'
+            }}>
+              <h3 style={{ margin: '0 0 16px 0', color: '#2665a9', fontSize: '18px' }}>
+                {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </h3>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(7, 1fr)',
+                gap: '8px',
+                marginBottom: '8px'
+              }}>
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                  <div key={day} style={{
+                    textAlign: 'center',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    color: '#666',
+                    padding: '8px'
+                  }}>
+                    {day}
+                  </div>
+                ))}
+              </div>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(7, 1fr)',
+                gap: '8px'
+              }}>
+                {Array(getCalendarDays().firstDay).fill(null).map((_, i) => (
+                  <div key={`empty-${i}`} style={{ padding: '8px' }} />
+                ))}
+                {getCalendarDays().days.map(({ date, dateStr, hasHistory }) => {
+                  const isToday = dateStr === new Date().toDateString();
+                  const isSelected = dateStr === selectedHistoryDate;
+                  return (
+                    <div
+                      key={dateStr}
+                      onClick={() => hasHistory && setSelectedHistoryDate(dateStr)}
+                      style={{
+                        padding: '12px',
+                        textAlign: 'center',
+                        borderRadius: '8px',
+                        cursor: hasHistory ? 'pointer' : 'default',
+                        background: isSelected ? '#2665a9' : hasHistory ? '#4caf50' : isToday ? '#e6f0fa' : 'white',
+                        color: isSelected || hasHistory ? 'white' : '#333',
+                        fontWeight: isToday || hasHistory ? '600' : '400',
+                        border: isToday ? '2px solid #2665a9' : '1px solid #e0e0e0',
+                        transition: 'all 0.2s',
+                        fontSize: '14px'
+                      }}
+                      onMouseEnter={e => {
+                        if (hasHistory && !isSelected) {
+                          e.target.style.transform = 'scale(1.05)';
+                          e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        e.target.style.transform = 'scale(1)';
+                        e.target.style.boxShadow = 'none';
+                      }}
+                    >
+                      {date.getDate()}
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ marginTop: '16px', display: 'flex', gap: '16px', fontSize: '13px', color: '#666' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '16px', height: '16px', background: '#4caf50', borderRadius: '4px' }} />
+                  <span>Worked</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div style={{ width: '16px', height: '16px', background: '#e6f0fa', border: '2px solid #2665a9', borderRadius: '4px' }} />
+                  <span>Today</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Selected Day Details */}
+            {selectedHistoryDate && (() => {
+              const dayData = history.find(h => h.date === selectedHistoryDate);
+              return dayData && (
+                <div style={{
+                  background: '#f8f9fa',
+                  padding: '24px',
+                  borderRadius: '12px',
+                  marginBottom: '20px',
+                  border: '1px solid #e0e0e0'
+                }}>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '16px',
+                    paddingBottom: '12px',
+                    borderBottom: '2px solid #2665a9'
+                  }}>
+                    <h3 style={{ margin: 0, color: '#2665a9', fontSize: '18px', fontWeight: '600' }}>
+                      📅 {new Date(dayData.date).toLocaleDateString('en-US', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}
+                    </h3>
+                    <div style={{ fontSize: '14px', color: '#666' }}>
+                      {dayData.completedTasks.length} tasks completed
+                    </div>
+                  </div>
+                  
+                  <div style={{ marginBottom: '16px' }}>
+                    {dayData.completedTasks.map(task => (
+                      <div key={task.id} style={{
+                        background: 'white',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        marginBottom: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px'
+                      }}>
+                        <Check size={18} color="#4caf50" />
+                        <div style={{ flex: 1, fontSize: '15px', color: '#333' }}>
+                          {task.name}
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#666' }}>
+                          {task.actualTime || task.duration} min
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{
+                    background: 'linear-gradient(135deg, #2665a9 0%, #1a4d7f 100%)',
+                    color: 'white',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '16px'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>
+                        Planned Time
+                      </div>
+                      <div style={{ fontSize: '20px', fontWeight: '600' }}>
+                        {dayData.totalPlanned} min
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>
+                        Actual Time
+                      </div>
+                      <div style={{ fontSize: '20px', fontWeight: '600' }}>
+                        {dayData.totalCompleted} min
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* All History */}
+            {history.length === 0 ? (
+              <p style={{ textAlign: 'center', color: '#666', padding: '48px' }}>
+                No history yet. Complete tasks to see them here! 📝
+              </p>
+            ) : !selectedHistoryDate && (
+              <div>
+                <h3 style={{ color: '#2665a9', fontSize: '18px', marginBottom: '16px' }}>
+                  All Days
+                </h3>
+                {history.map((day, index) => (
+                  <div key={index} style={{
+                    background: '#f8f9fa',
+                    padding: '24px',
+                    borderRadius: '12px',
+                    marginBottom: '20px',
+                    border: '1px solid #e0e0e0',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onClick={() => setSelectedHistoryDate(day.date)}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                  >
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '16px',
+                      paddingBottom: '12px',
+                      borderBottom: '2px solid #2665a9'
+                    }}>
+                      <h3 style={{ margin: 0, color: '#2665a9', fontSize: '18px', fontWeight: '600' }}>
+                        📅 {new Date(day.date).toLocaleDateString('en-US', { 
+                          weekday: 'long', 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })}
+                      </h3>
+                      <div style={{ fontSize: '14px', color: '#666' }}>
+                        {day.completedTasks.length} tasks completed
+                      </div>
+                    </div>
+                    
+                    <div style={{ marginBottom: '16px' }}>
+                      {day.completedTasks.slice(0, 3).map(task => (
+                        <div key={task.id} style={{
+                          background: 'white',
+                          padding: '12px',
+                          borderRadius: '8px',
+                          marginBottom: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px'
+                        }}>
+                          <Check size={18} color="#4caf50" />
+                          <div style={{ flex: 1, fontSize: '15px', color: '#333' }}>
+                            {task.name}
+                          </div>
+                          <div style={{ fontSize: '13px', color: '#666' }}>
+                            {task.actualTime || task.duration} min
+                          </div>
+                        </div>
+                      ))}
+                      {day.completedTasks.length > 3 && (
+                        <div style={{ textAlign: 'center', color: '#666', fontSize: '13px', marginTop: '8px' }}>
+                          +{day.completedTasks.length - 3} more tasks
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{
+                      background: 'linear-gradient(135deg, #2665a9 0%, #1a4d7f 100%)',
+                      color: 'white',
+                      padding: '16px',
+                      borderRadius: '8px',
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '16px'
+                    }}>
+                      <div>
+                        <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>
+                          Planned Time
+                        </div>
+                        <div style={{ fontSize: '20px', fontWeight: '600' }}>
+                          {day.totalPlanned} min
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '13px', opacity: 0.9, marginBottom: '4px' }}>
+                          Actual Time
+                        </div>
+                        <div style={{ fontSize: '20px', fontWeight: '600' }}>
+                          {day.totalCompleted} min
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
