@@ -473,6 +473,12 @@ def process_diakofti_file(df):
             entry["Description"] = "Construction works"
             filled = True
 
+        if "ΠΛΗΡΩΜΗ ΒΕΒΑΙΩΜΕΝΕΣ ΣΤΙΣ Δ.Ο.Υ. ΟΦΕΙΛΕΣ" in desc.upper() and amount == 100.16:
+            entry["Type"] = "Operation cost"
+            entry["Supplier"] = "Worker 1"
+            entry["Description"] = "TEKA"
+            filled = True
+
         if "STAVROU" in desc.upper() or "SKANDIA" in desc.upper() or "PLATANOS" in desc.upper() or "TO LIMAN KYTHI GR" in desc.upper():
             entry["Type"] = "General"
             entry["Supplier"] = "F&B"
