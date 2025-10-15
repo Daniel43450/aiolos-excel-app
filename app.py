@@ -492,7 +492,14 @@ def process_diakofti_file(df):
             entry["Supplier"] = "Transportation"
             entry["Description"] = "Transportation"
             filled = True
-
+   
+        if "AIOLOS DIAKOFTI EKMETALLEFSI AKINIT" in desc.upper():
+            entry["Location"] = "Diakofti"
+            entry["Type"] = "Aiolos Diakofti"
+            entry["Supplier"] = "Operation cost"
+            entry["Description"] = "Reimbursement of expenses"
+            filled = True
+            
         if "CANVA" in desc.upper():
             entry["Type"] = "General"
             entry["Supplier"] = "Office expenses"
