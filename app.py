@@ -473,6 +473,12 @@ def process_diakofti_file(df):
             entry["Description"] = "Construction works"
             filled = True
 
+        if amount == 1006.77:
+            entry["Type"] = "Operation cost"
+            entry["Supplier"] = "Worker 1"
+            entry["Description"] = "Salary"
+            filled = True
+
         if "ΠΛΗΡΩΜΗ ΒΕΒΑΙΩΜΕΝΕΣ ΣΤΙΣ Δ.Ο.Υ. ΟΦΕΙΛΕΣ" in desc.upper() and amount == 100.16:
             entry["Type"] = "Operation cost"
             entry["Supplier"] = "Worker 1"
