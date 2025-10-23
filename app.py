@@ -395,7 +395,7 @@ VILLA_OWNERS = {
     ("Y3", "Villa 1"): "Ronen Doron Aviram",
     ("Y3", "Villa 2"): "Ronen Ofec",
     ("Y3", "Villa 3"): "Ran Hai",
-    ("Y3", "Villa 4"): "/",
+    ("Y3", "Villa 4"): "Pepel Weitz Yaniva",
     ("Y3", "Villa 5"): "Eliyahu Ovadia",
     ("Y4-7", "Villa 9"): "Elad Shimon Nissenholtz",
     ("Y4-7", "Villa 10"): "Dan Dikanoff",
