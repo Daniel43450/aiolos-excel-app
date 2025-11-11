@@ -1103,229 +1103,343 @@ def process_athens_file(df):
 # Ilisia NBG PROCESSING FUNCTION
 # ============================================
 
-
 def process_ilisia_file(df):
-    """
-    Process Ilisia NBG files.
-    Supports both the legacy schema:
-        'ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ','ΠΕΡΙΓΡΑΦΗ','ΠΟΣΟ'
-    and the new bank export like the uploaded file:
-        'Ημερομηνία','Περιγραφή','Ποσό συναλλαγής','Χρέωση / Πίστωση','Valeur'
-    """
-    df = df.copy()
-
-    # --- Column resolution (pick what's available) ---
-    def _pick(cols):
-        for c in cols:
-            if c in df.columns:
-                return c
-        return None
-
-    col_date   = _pick(['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ', 'Ημερομηνία', 'Valeur'])
-    col_desc   = _pick(['ΠΕΡΙΓΡΑΦΗ', 'Περιγραφή'])
-    col_amount = _pick(['ΠΟΣΟ', 'Ποσό συναλλαγής'])
-    col_crdr   = _pick(['Χρέωση / Πίστωση'])  # optional
-
-    # נוודא שיש עמודות בסיס
-    required = [col_desc, col_amount]
-    if any(c is None for c in required):
-        raise ValueError("Missing required columns for Ilisia: description or amount not found")
-
-    # --- Clean rows ---
-    df = df.dropna(subset=[col_desc])
-    # תאריך
-    if col_date:
-        df[col_date] = pd.to_datetime(df[col_date], dayfirst=True, errors='coerce')
-
-    # סכום
-    if pd.api.types.is_numeric_dtype(df[col_amount]):
-        amt_series = df[col_amount].astype(float)
-    else:
-        amt_series = (
-            df[col_amount]
-            .astype(str)
-            .str.replace('.', '', regex=False)      # הסר מפרידי אלפים בנקודה
-            .str.replace(',', '.', regex=False)     # המרת פסיק לנקודה עשרונית
-            .str.replace(r'[^\d\.\-]', '', regex=True)
-            .astype(float)
-        )
-    df['_amount'] = amt_series
-
+    """Process Ilisia NBG format files"""
+    df = df.dropna(subset=['ΠΕΡΙΓΡΑΦΗ'])
+    df['ΠΟΣΟ'] = df['ΠΟΣΟ'].astype(str).str.replace('.', '').str.replace(',', '.').astype(float)
+    
     results = []
     for _, row in df.iterrows():
-        original_desc = str(row[col_desc])
+        original_desc = str(row['ΠΕΡΙΓΡΑΦΗ'])
         desc = original_desc.upper()
-
-        amt = float(row['_amount']) if pd.notnull(row['_amount']) else 0.0
-        amount_abs = abs(amt)
-
-        # קביעה אם הכנסה או הוצאה
-        if amt != 0:
-            is_income = amt > 0
-        else:
-            # fallback לפי "Χρέωση / Πίστωση" אם קיים
-            if col_crdr:
-                crdr = str(row.get(col_crdr, '')).strip().lower()
-                # מילות מפתח נפוצות
-                is_income = crdr in ['πίστωση', 'credit', 'credito', 'πίστωση']
-            else:
-                is_income = False
-
-        # זיהוי פלוטים מתוך התיאור
+        amount = abs(row['ΠΟΣΟ'])
         plots = find_all_plots(desc)
+        
         if len(plots) == 1:
             plot_val = plots[0]
         elif len(plots) > 1:
             plot_val = "Multiple"
         else:
             plot_val = "G1 - Manolis"
-
-        # תאריך לפורמט התצוגה
-        if col_date and pd.notnull(row[col_date]):
-            date_val = row[col_date]
-            date_out = date_val.strftime('%d/%m/%Y')
-        else:
-            date_out = ""
-
+        
+        is_income = row['ΠΟΣΟ'] > 0
+        
         entry = {
-            "Date": date_out,
+            "Date": row['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ'],
             "Income/outcome": "Income" if is_income else "Outcome",
             "Plot": plot_val,
             "Expenses Type": "Soft Cost",
             "Type": "",
             "Supplier": "",
             "Description": desc,
-            "In": amount_abs if is_income else "",
-            "Out": -amount_abs if not is_income else "",
-            "Vat": "",
-            "Total": amount_abs if is_income else -amount_abs,
+            "In": amount if is_income else "",
+            "Out": -amount if not is_income else "",
+            "Vat": "" ,
+            "Total": amount if is_income else -amount,
             "Progressive Ledger Balance": "",
-            "Original Description": original_desc,
-            "Payment details": ""
+            "Payment details": "",
+            "Original Description": original_desc
         }
-
+        
         filled = False
-
-        # ============================
-        # 🔴 Ilisia RULES (unchanged logic, works on desc/amount_abs)
-        # ============================
+        
+        # ============================================
+        # 🔴 Ilisia RULES - ADD YOUR RULES HERE
+        # ============================================
         if "COM POI" in desc or "COM POO" in desc:
-            entry["Type"] = "Bank"; entry["Supplier"] = "Bank"; entry["Description"] = "Bank fees"; filled = True
+            entry["Type"] = "Bank"
+            entry["Supplier"] = "Bank"
+            entry["Description"] = "Bank fees"
+            filled = True
 
-        if "STAMATIS PANAGIOTIS STAVRO" in desc:
-            entry["Plot"] = "G1 - Manolis"; entry["Expenses Type"] = "Operation Income"
-            entry["Type"] = "Rent"; entry["Supplier"] = "Tenant - Taverne"; entry["Description"] = "Monthly Taverne rent"; filled = True
+        if "STAMATIS PANAGIOTIS STAVRO" in desc.upper():
+            entry["Plot"] = "G1 - Manolis"
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Rent"
+            entry["Supplier"] = "Tenant - Taverne"
+            entry["Description"] = "Monthly Taverne rent"
+            filled = True
 
-        if any(term in desc for term in ["TRANSFER BETWEEN ACCOUNTS", "NBG TO EURO"]):
-            entry["Plot"] = "G1 - Manolis"; entry["Expenses Type"] = "Operation Income"
-            entry["Type"] = "Accommodation"; entry["Supplier"] = "Booking"; entry["Description"] = "Accommodation fees"; filled = True
+        if any(term in desc.upper() for term in ["TRANSFER BETWEEN ACCOUNTS", "NBG TO EURO"]):
+            entry["Plot"] = "G1 - Manolis"
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
 
-        if "ZARA" in desc:
-            entry["Type"] = "Hotel operation"; entry["Supplier"] = "Maintenance"; entry["Description"] = "Maintenance"; filled = True
+        if "ZARA" in desc.upper():
+            entry["Type"] = "Hotel operation"
+            entry["Supplier"] = "Maintenance"
+            entry["Description"] = "Maintenance"
+            filled = True
 
-        if "WATT-VOLT" in desc:
-            entry["Type"] = "Authorities"; entry["Supplier"] = "Electricity"; entry["Description"] = "Electricity"; filled = True
+        if "WATT-VOLT" in desc.upper():
+            entry["Type"] = "Authorities"
+            entry["Supplier"] = "Electricity"
+            entry["Description"] = "Electricity"
+            filled = True
 
-        if "ARID" in desc:
-            entry["Type"] = "Architect"; entry["Supplier"] = "ARID"; entry["Description"] = "Planning"; filled = True
 
-        if "PANAYOTIS" in desc:
-            entry["Type"] = "Project management"; entry["Supplier"] = "Panayotis"; entry["Description"] = "Car rent fees"; filled = True
+
+
+        if "ARID" in desc.upper():
+            entry["Type"] = "Architect"
+            entry["Supplier"] = "ARID"
+            entry["Description"] = "Planning"
+            filled = True
+
+        if "PANAYOTIS" in desc.upper():
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Panayotis"
+            entry["Description"] = "Car rent fees"
+            filled = True
+
 
         if "EDEN" in desc:
-            entry["Type"] = "Project management"; entry["Supplier"] = "Accommodation"; entry["Description"] = "Hotel"; filled = True
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Accommodation"
+            entry["Description"] = "Hotel"
+            filled = True
 
-        if any(k in desc for k in ["TRANSPORT KALLI GR","GRIGORAK KYTHI GR","O MAGOS KYTHI GR","STAMATIS KYTHI GR",
-                                   "KONTOLEO KYTHI GR","VITSIO KYTHI GR","BOURNAKI KYTHI GR","STAVROU KYTHI GR"]):
-            entry["Type"] = "General"; entry["Supplier"] = "F&B"; entry["Description"] = "F&B"; filled = True
+        if any(keyword in desc.upper() for keyword in ["TRANSPORT KALLI GR","GRIGORAK KYTHI GR", "O MAGOS KYTHI GR", "STAMATIS KYTHI GR", "KONTOLEO KYTHI GR", "VITSIO KYTHI GR", "BOURNAKI KYTHI GR", "STAVROU KYTHI GR"]):
+            entry["Type"] = "General"
+            entry["Supplier"] = "F&B"
+            entry["Description"] = "F&B"
+            filled = True
+
 
         if "ALL PLOTS MARKETING" in desc:
-            entry["Type"] = "Marketing"; entry["Supplier"] = "Marketing"; entry["Description"] = "Marketing Services fee"; filled = True
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "Marketing"
+            entry["Description"] = "Marketing Services fee"
+            filled = True
 
         if "CALEN" in desc or "HARD COST" in desc:
-            entry["Expenses Type"] = "Hard Cost"; entry["Type"] = "Contractor"; entry["Supplier"] = "Calen"; entry["Description"] = "Construction works"; filled = True
+            entry["Expenses Type"] = "Hard Cost"
+            entry["Type"] = "Contractor"
+            entry["Supplier"] = "Calen"
+            entry["Description"] = "Construction works"
+            filled = True
 
         if "SUPERVISION" in desc:
-            entry["Type"] = "Supervision"; entry["Supplier"] = "TAG ARCHITECTS"; entry["Description"] = "Supervision"; filled = True
+            entry["Type"] = "Supervision"
+            entry["Supplier"] = "TAG ARCHITECTS"
+            entry["Description"] = "Supervision"
+            filled = True
 
-        if "HOLIDAYS TEL" in desc or "EL AL" in desc:
-            entry["Type"] = "Project management"; entry["Supplier"] = "Transportation"; entry["Description"] = "Flight"; filled = True
+        if "HOLIDAYS TEL" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Flight"
+            filled = True
 
-        if any(k in desc for k in ["FACEBOOK","FACEBK","FB.ME","META"]):
-            entry["Type"] = "Marketing"; entry["Supplier"] = "Marketing"; entry["Description"] = "Marketing Services fee"; filled = True
+        if "EL AL" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Flight"
+            filled = True
 
-        if any(k in desc for k in ["ACCOUNTING","BOOKKEEP","ECOVIS"]) and not any(w in desc for w in ["YAG","TAG"]):
-            entry["Type"] = "Accounting"; entry["Supplier"] = "Ecovis"; entry["Description"] = "Accountant monthly fees"; filled = True
+        if any(keyword in desc.upper() for keyword in ["FACEBOOK", "FACEBK", "FB.ME", "META"]):
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "Marketing"
+            entry["Description"] = "Marketing Services fee"
+            filled = True
+
+
+        if any(term in desc for term in ["ACCOUNTING", "BOOKKEEP", "ECOVIS"]) and not any(word in desc for word in ["YAG", "TAG"]):
+            entry["Type"] = "Accounting"
+            entry["Supplier"] = "Ecovis"
+            entry["Description"] = "Accountant monthly fees"
+            filled = True
 
         if "GAS" in desc:
-            entry["Type"] = "Project management"; entry["Supplier"] = "Transportation"; entry["Description"] = "Gas station"; filled = True
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Gas station"
+            filled = True
 
         if "DRAKAKIS" in desc:
-            entry["Type"] = "Project management"; entry["Supplier"] = "Drakakis Tours"; entry["Description"] = "Car rent fees"; filled = True
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Drakakis Tours"
+            entry["Description"] = "Car rent fees"
+            filled = True
 
-        if any(k in desc for k in ["FLIGHT","AEGEAN","AEGEANWEB","OLYMPIC","SKY","ISRAIR","WIZZ"]):
-            entry["Type"] = "Project management"; entry["Supplier"] = "Transportation"; entry["Description"] = "Flight"; filled = True
+        if "FLIGHT" in desc or "AEGEAN" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Flight"
+            filled = True
 
-        if any(w in desc for w in ["TONY S","EAT"]) or any(w in desc for w in ["DINNER","FOOD","CAFE","COFFEE","LUNCH","BREAKFAST"]):
-            entry["Type"] = "General"; entry["Supplier"] = "F&B"; entry["Description"] = "F&B"; filled = True
+        if "TONY S" in desc or "Tony S" in desc or "tony s" in desc or "eat" in desc or "EAT" in desc:
+            entry["Type"] = "General"
+            entry["Supplier"] = "F&B"
+            entry["Description"] = "F&B"
+            filled = True
+
+
+        if any(word in desc for word in ["AEGEANWEB", "AEGEAN", "OLYMPIC", "SKY", "ISRAIR", "WIZZ"]):
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Flight"
+            filled = True
+
+        if any(word in desc for word in ["DINNER", "FOOD", "CAFE", "COFFEE", "LUNCH", "BREAKFAST"]):
+            entry["Type"] = "General"
+            entry["Supplier"] = "F&B"
+            entry["Description"] = "F&B"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
+            "villa 1" in desc or "Villa 1" in desc or "VILLA 1" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 1"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
+            "villa 2" in desc or "Villa 2" in desc or "VILLA 2" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 2"
+            entry["Description"] = "Broker fees"
+            filled = True
 
         if "RF919086180000334" in desc:
-            entry["Plot"] = "R4"; entry["Expenses Type"] = "Soft Cost"
-            entry["Type"] = "Utility Bills"; entry["Supplier"] = "Municipality"; entry["Description"] = "Electricity"; filled = True
+            entry["Plot"] = "R4"
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            filled = True
+
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
+            "villa 3" in desc or "Villa 3" in desc or "VILLA 3" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 3"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
+            "villa 4" in desc or "Villa 4" in desc or "VILLA 4" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 4"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
+            "villa 5" in desc or "Villa 5" in desc or "VILLA 5" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 5"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
+            "villa 6" in desc or "Villa 6" in desc or "VILLA 6" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 6"
+            entry["Description"] = "Broker fees"
+            filled = True
+
 
         if "GOOGLE" in desc or "ΣΥΝΔΡΟΜΗ ADVANCED FOR BUSINES" in desc:
-            entry["Type"] = "Marketing"; entry["Supplier"] = "Marketing"; entry["Description"] = "Marketing Services fee"; filled = True
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "Marketing"
+            entry["Description"] = "Marketing Services fee"
+            filled = True
 
         if "CRM" in desc:
-            entry["Type"] = "Marketing"; entry["Supplier"] = "reWire"; entry["Description"] = "CRM"; filled = True
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "reWire"
+            entry["Description"] = "CRM"
+            filled = True
 
         if "RF91908618000033404472101" in desc or "PROT-RF549086180000334" in desc:
-            entry["Type"] = "Utility Bills"; entry["Supplier"] = "Municipality"; entry["Description"] = "Electricity"; entry["Plot"] = "G2"; filled = True
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            entry["Plot"] = "G2"
+            filled = True
 
-        if "RF38908618000033404445701" in desc or "RF389086180000334044" in desc:
-            entry["Type"] = "Utility Bills"; entry["Supplier"] = "Municipality"; entry["Description"] = "Electricity"; entry["Plot"] = "Y3"; filled = True
+        if "RF38908618000033404445701" in desc or "RF389086180000334044" in desc:  
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            entry["Plot"] = "Y3"
+            filled = True
 
-        if "PROT-919086180000334" in desc:
-            entry["Type"] = "Utility Bills"; entry["Supplier"] = "Municipality"; entry["Description"] = "Electricity"; entry["Plot"] = "R4"; filled = True
+        if "RF91908618000033404472101" in desc or "PROT-919086180000334" in desc:
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            entry["Plot"] = "R4"
+            filled = True
 
         if "UBER" in desc or "TAXI" in desc:
-            entry["Type"] = "Project management"; entry["Supplier"] = "Transportation"; entry["Description"] = "Athens Taxi"; filled = True
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Athens Taxi"
+            filled = True
 
         if "OPENAI" in desc:
-            entry["Type"] = "General"; entry["Supplier"] = "Office expenses"; entry["Description"] = "Office expense"; filled = True
+            entry["Type"] = "General"
+            entry["Supplier"] = "Office expenses"
+            entry["Description"] = "Office expense"
+            filled = True
 
         if "TAG" in desc:
-            entry["Type"] = "Architect"; entry["Supplier"] = "TAG ARCHITECTS"
-            entry["Description"] = "Supervision" if "SUP" in desc else "Planning"; filled = True
+            entry["Type"] = "Architect"
+            entry["Supplier"] = "TAG ARCHITECTS"
+            if "SUP" in desc:
+                entry["Description"] = "Supervision"
+            else:
+                entry["Description"] = "Planning"
+            filled = True
 
         if "OASA" in desc:
-            entry["Type"] = "Project management"; entry["Supplier"] = "Transportation"; entry["Description"] = "Transportation"; filled = True
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Transportation"
+            filled = True
 
         if "ΔΗΜΟ-RF369029090000097" in desc:
-            entry["Type"] = "Utility Bills"; entry["Supplier"] = "Municipality"; entry["Description"] = "Water"; entry["Plot"] = "Y3"; filled = True
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Water"
+            entry["Plot"] = "Y3"
+            filled = True
 
-        if any(term in desc for term in ["MANAGEMENT","MANAG.","MGMT","MNGMT"]) and amt in [-1550, -1550.00, -1550.0, 1550.00, 1550.0, 2055, 2055.0, 2057.0, 1550]:
-            entry["Type"] = "Worker 1"; entry["Supplier"] = "Aiolos Athens"; entry["Description"] = "management fees"; filled = True
 
-        if any(term in desc for term in ["COSM","COSMOTE","PHONE"]):
-            entry["Type"] = "Hotel operation"; entry["Supplier"] = "Cosmote"; entry["Description"] = "Telephone"; filled = True
+        if any(term in desc for term in ["MANAGEMENT", "MANAG.", "MGMT", "MNGMT"]) and row['ΠΟΣΟ'] in [-1550, -1550.00, -1550.0, 1550.00, 1550.0, 2055, 2055.0, 2057.0, 1550]:
+            entry["Type"] = "Worker 1"
+            entry["Supplier"] = "Aiolos Athens"
+            entry["Description"] = "management fees"
+            filled = True
+
+        if any(term in desc for term in ["COSM", "COSMOTE", "PHONE"]):
+            entry["Type"] = "Hotel operation"
+            entry["Supplier"] = "Cosmote"
+            entry["Description"] = "Telephone"
+            filled = True
 
         if "RF389086180000334" in desc:
-            entry["Type"] = "Utility Bills"; entry["Supplier"] = "Municipality"; entry["Description"] = "Electricity"; entry["Plot"] = "Y3"; filled = True
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            entry["Plot"] = "Y3"
+            filled = True
 
-        # ----------------------------
+
+        # ============================================
+        # END OF Ilisia RULES
+        # ============================================
+        
         if not filled:
             entry["Description"] = f"🟨 {entry['Description']}"
+        
         results.append(entry)
-
-    out_df = pd.DataFrame(results)
-    # שמירה על אותו סדר עמודות שהטאב שלך מצפה לו
-    col_order = [
-        "Date","Income/outcome","Plot","Expenses Type","Type","Supplier","Description",
-        "In","Out","Vat","Total","Progressive Ledger Balance","Original Description","Payment details"
-    ]
-    # reindex בטוח אם נוספו/חסרו עמודות
-    return out_df.reindex(columns=col_order, fill_value="")
+    
+    return pd.DataFrame(results)
 
 
 # ============================================
