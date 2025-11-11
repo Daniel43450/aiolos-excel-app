@@ -1348,6 +1348,15 @@ def process_ilisia_file(df):
             entry["Description"] = "Pool"
             filled = True
 
+        if any(term in desc.upper() for term in ["POOL", "POOLS"]):
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Hotel operation"
+            entry["Supplier"] = "Cleaning"
+            entry["Description"] = "Pool"
+            filled = True
+
+        
+
         if any(k in desc for k in ["ΠΡΟΜΗΘΕΙΑ ΕΝΤΟΛΗΣ", "ΕΞΟΔΑ ΤΡ ΠΛΗΡΩΜΗΣ"]):
             entry["Expenses Type"] = "Soft Cost"
             entry["Type"] = "Bank"
