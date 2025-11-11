@@ -459,7 +459,7 @@ def process_diakofti_file(df):
         filled = False
         
         # ============================================
-        # 🔴 DIAKOFTI RULES - ADD YOUR RULES HERE
+        # 🔴 Diakofti RULES - ADD YOUR RULES HERE
         
         if "COM POI" in desc or "COM POO" in desc:
             entry["Type"] = "Bank"
@@ -798,7 +798,7 @@ def process_diakofti_file(df):
 
 
 
-        # END OF DIAKOFTI RULES
+        # END OF Diakofti RULES
         # ============================================
         
         if not filled:
@@ -809,7 +809,7 @@ def process_diakofti_file(df):
     return pd.DataFrame(results)
 
 # ============================================
-# ATHENS PROCESSING FUNCTION
+# Athens PROCESSING FUNCTION
 # ============================================
 def process_athens_file(df):
     """Process Athens format files"""
@@ -843,7 +843,7 @@ def process_athens_file(df):
         filled = False
         
         # ============================================
-        # 🔵 ATHENS RULES - ADD YOUR RULES HERE
+        # 🔵 Athens RULES - ADD YOUR RULES HERE
         if any(word in desc for word in ["DINNER", "FOOD", "CAFE", "COFFEE", "LUNCH", "BREAKFAST", "ΦΑΓΗΤΟ", "ΕΣΤΙΑΤΟΡΙΟ", "ΚΑΦΕ"]):
             entry["Type"] = "F&B"
             entry["Supplier"] = "General"
@@ -1080,7 +1080,7 @@ def process_athens_file(df):
             filled = True
 
 
-        # END OF ATHENS RULES
+        # END OF Athens RULES
         # ============================================
         
         if not filled:
@@ -1100,11 +1100,11 @@ def process_athens_file(df):
     return result_df[column_order]
 
 # ============================================
-# ILISIA PROCESSING FUNCTION
+# Ilisia NBG PROCESSING FUNCTION
 # ============================================
 
 def process_ilisia_file(df):
-    """Process ILISIA format files"""
+    """Process Ilisia NBG format files"""
     df = df.dropna(subset=['ΠΕΡΙΓΡΑΦΗ'])
     df['ΠΟΣΟ'] = df['ΠΟΣΟ'].astype(str).str.replace('.', '').str.replace(',', '.').astype(float)
     
@@ -1144,7 +1144,7 @@ def process_ilisia_file(df):
         filled = False
         
         # ============================================
-        # 🔴 ILISIA RULES - ADD YOUR RULES HERE
+        # 🔴 Ilisia RULES - ADD YOUR RULES HERE
         # ============================================
         if "COM POI" in desc or "COM POO" in desc:
             entry["Type"] = "Bank"
@@ -1431,7 +1431,7 @@ def process_ilisia_file(df):
 
 
         # ============================================
-        # END OF ILISIA RULES
+        # END OF Ilisia RULES
         # ============================================
         
         if not filled:
@@ -1485,9 +1485,9 @@ with tab1:
         st.markdown("### 📌 Quick Guide")
         st.markdown("""
         **Formats:**
-        - **DIAKOFTI**: Plot-based transactions
-        - **ATHENS**: Office transactions
-        - **ILISIA**: Ilisia project transactions
+        - **Diakofti**: Plot-based transactions
+        - **Athens**: Office transactions
+        - **Ilisia NBG**: Ilisia project transactions
         
         **Supported Files:**
         - Excel (.xlsx, .xls)
@@ -1509,7 +1509,7 @@ with tab1:
                 try:
                     # Read file
                     if uploaded_file.name.lower().endswith('.csv'):
-                        if format_type == "DIAKOFTI":
+                        if format_type == "Diakofti":
                             df = pd.read_csv(uploaded_file, encoding="ISO-8859-7")
                         else:
                             # נסה UTF-8 ואז נפילה ל-ISO-8859-7 במקרה של יוונית
@@ -1521,11 +1521,11 @@ with tab1:
                         df = pd.read_excel(uploaded_file)
                     
                     # Process based on format
-                    if format_type == "DIAKOFTI":
+                    if format_type == "Diakofti":
                         result_df = process_diakofti_file(df)
                     elif format_type == "ATHENS":
                         result_df = process_athens_file(df)
-                    else:  # ILISIA
+                    else:  # Ilisia NBG
                         result_df = process_ilisia_file(df)
                     
                     # Calculate metrics
@@ -2597,7 +2597,7 @@ with tab6:
     
     st.markdown("""
     #### 📊 Excel Classifier
-    1. **Select Format**: Choose between DIAKOFTI (plot-based) or ATHENS (office) format
+    1. **Select Format**: Choose between Diakofti (plot-based) or Athens (office) format
     2. **Upload File**: Upload your Excel or CSV file
     3. **Process**: Click the Process button to categorize transactions
     4. **Review**: Check entries marked with 🟨 - these need manual review
@@ -2633,8 +2633,8 @@ with tab6:
     
     #### 🔧 Adding Classification Rules
     To add classification rules, edit the code in the processing functions:
-    - **DIAKOFTI Rules**: Look for the section marked "🔴 DIAKOFTI RULES"
-    - **ATHENS Rules**: Look for the section marked "🔵 ATHENS RULES"
+    - **Diakofti Rules**: Look for the section marked "🔴 Diakofti RULES"
+    - **Athens Rules**: Look for the section marked "🔵 Athens RULES"
     
     #### 📞 Support
     For issues or questions, please contact the development team.
