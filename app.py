@@ -1137,8 +1137,8 @@ def process_ilisia_file(df):
             "Vat": "" ,
             "Total": amount if is_income else -amount,
             "Progressive Ledger Balance": "",
-            "Payment details": "",
-            "Original Description": original_desc
+            "Original Description": original_desc,
+            "Payment details": ""
         }
         
         filled = False
