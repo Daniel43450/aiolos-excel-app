@@ -1103,106 +1103,36 @@ def process_athens_file(df):
 # Ilisia NBG PROCESSING FUNCTION
 # ============================================
 
-# ============================================
-# Ilisia NBG PROCESSING FUNCTION - rewritten
-# ============================================
 def process_ilisia_file(df):
-    """
-    Process Ilisia NBG files for both schemas:
-    Legacy:  'ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ','ΠΕΡΙΓΡΑΦΗ','ΠΟΣΟ'
-    New:     'Ημερομηνία','Περιγραφή','Ποσό συναλλαγής','Χρέωση / Πίστωση','Valeur'
-    Output columns stay exactly as the Ilisia tab expects.
-    """
+    """Process Ilisia NBG format files"""
     df = df.copy()
-
-    # ---- Resolve column names ----
-    def pick(*names):
-        for n in names:
-            if n in df.columns:
-                return n
-        return None
-
-    col_date   = pick('ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ', 'Ημερομηνία', 'Valeur')
-    col_desc   = pick('ΠΕΡΙΓΡΑΦΗ', 'Περιγραφή')
-    col_amount = pick('ΠΟΣΟ', 'Ποσό συναλλαγής')
-    col_crdr   = pick('Χρέωση / Πίστωση')  # optional
-
-    if col_desc is None or col_amount is None:
-        raise ValueError("Ilisia: missing required columns - description or amount")
-
-    # ---- Clean basic fields ----
-    df = df.dropna(subset=[col_desc])
-    # Parse date if present
-    if col_date:
-        df[col_date] = pd.to_datetime(df[col_date], dayfirst=True, errors='coerce')
-
-    # Parse amount robustly
-    if pd.api.types.is_numeric_dtype(df[col_amount]):
-        df['_amount'] = df[col_amount].astype(float)
-    else:
-        df['_amount'] = (
-            df[col_amount].astype(str)
-            .str.replace('.', '', regex=False)     # remove thousands dot
-            .str.replace(',', '.', regex=False)    # decimal comma to dot
-            .str.replace(r'[^\d\.\-]', '', regex=True)
-            .astype(float)
-        )
-
+    df['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ'] = pd.to_datetime(df['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ'], dayfirst=True, errors='coerce')
+    df = df.dropna(subset=['ΠΕΡΙΓΡΑΦΗ'])
+    
     results = []
     for _, row in df.iterrows():
-        original_desc = str(row[col_desc])
+        original_desc = str(row['ΠΕΡΙΓΡΑΦΗ'])
         desc = original_desc.upper()
-
-        amt = float(row['_amount']) if pd.notnull(row['_amount']) else 0.0
-        amount_abs = abs(amt)
-
-        # Decide income vs outcome
-        if amt != 0:
-            is_income = amt > 0
-        else:
-            # fallback to credit/debit text if exists
-            if col_crdr:
-                crdr = str(row.get(col_crdr, '')).strip().lower()
-                is_income = crdr in ['πίστωση', 'credit', 'credito', 'πίστωση']
-            else:
-                is_income = False
-
-        # Plot detection from description
-        plots = find_all_plots(desc)
-        if len(plots) == 1:
-            plot_val = plots[0]
-        elif len(plots) > 1:
-            plot_val = "Multiple"
-        else:
-            plot_val = "G1 - Manolis"
-
-        # Format output date
-        date_out = ""
-        if col_date and pd.notnull(row[col_date]):
-            try:
-                date_out = row[col_date].strftime('%d/%m/%Y')
-            except Exception:
-                date_out = ""
-
+        amount = abs(float(str(row['ΠΟΣΟ']).replace('.', '').replace(',', '.')))
+        
         entry = {
-            "Date": date_out,
-            "Income/outcome": "Income" if is_income else "Outcome",
-            "Plot": plot_val,
+            "Date": row['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ'].strftime('%d/%m/%Y') if not pd.isnull(row['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ']) else '',
+            "Income/outcome": "Income" if row['ΠΟΣΟ'] > 0 else "Outcome",
+            "Plot": "G1 - Manolis",
             "Expenses Type": "Soft Cost",
             "Type": "",
             "Supplier": "",
             "Description": desc,
-            "In": amount_abs if is_income else "",
-            "Out": -amount_abs if not is_income else "",
+            "In": amount if row['ΠΟΣΟ'] > 0 else "",
+            "Out": -amount if row['ΠΟΣΟ'] < 0 else "",
             "Vat": "",
-            "Total": amount_abs if is_income else -amount_abs,
+            "Total": amount if row['ΠΟΣΟ'] > 0 else -amount,
             "Progressive Ledger Balance": "",
             "Payment details": "",
             "Original Description": original_desc
         }
-
+        
         filled = False
-
 
         
         # ============================================
