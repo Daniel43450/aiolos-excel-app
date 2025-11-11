@@ -1229,6 +1229,47 @@ def process_ilisia_file(df):
             entry["Description"] = "Booking refund"
             filled = True
 
+        if "ΠΡΟΜΗΘΕΙΑ ΕΝΤΟΛΗΣ" in desc:
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Bank"
+            entry["Supplier"] = "Bank"
+            entry["Description"] = "Bank fees"
+            filled = True
+
+        # --- Rule: Bank expenses / ΠΡΟΜΗΘΕΙΕΣ ΕΞΟΔΑ ---
+        if "ΠΡΟΜΗΘΕΙΕΣ ΕΞΟΔΑ" in desc:
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Bank"
+            entry["Supplier"] = "Bank"
+            entry["Description"] = "Bank fees"
+            filled = True
+
+    
+        if any(k in desc for k in ["PROTERGIA", "ENERGETICA", "DEI", "ΔΕΗ"]):
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Hotel operation"
+            entry["Supplier"] = "Electricity"
+            entry["Description"] = "Electricity bill"
+            filled = True
+
+
+        # --- Rule: Pool cleaning invoice ---
+        if "INV400009529618476" in desc:
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Hotel operation"
+            entry["Supplier"] = "Cleaning"
+            entry["Description"] = "Pool"
+            filled = True
+
+        if any(k in desc for k in ["ΠΡΟΜΗΘΕΙΑ ΕΝΤΟΛΗΣ", "ΕΞΟΔΑ ΤΡ ΠΛΗΡΩΜΗΣ"]):
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Bank"
+            entry["Supplier"] = "Bank"
+            entry["Description"] = "Bank fees"
+            filled = True
+
+
+
         # --- Rule: Booking.com Accommodation Income (positive) ---
         if "BOOKING.COM B.V." in desc and row['ΠΟΣΟ'] > 0:
             entry["Expenses Type"] = "Operation Income"
