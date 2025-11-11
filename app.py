@@ -1120,39 +1120,53 @@ def process_ilisia_file(df):
     if col_desc is None or col_amount is None:
         raise ValueError("Ilisia: description or amount column missing")
 
-    # parse date if present
+    # --- normalize canonical columns expected by your RULES ---
+    # Description -> ΠΕΡΙΓΡΑΦΗ
+    if col_desc != 'ΠΕΡΙΓΡΑΦΗ':
+        df['ΠΕΡΙΓΡΑΦΗ'] = df[col_desc]
+
+    # Date -> ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ  (parse then keep canonical)
     if col_date:
         df[col_date] = pd.to_datetime(df[col_date], dayfirst=True, errors='coerce')
-
-    # clean rows
-    df = df.dropna(subset=[col_desc])
-
-    # robust amount parsing to float with sign preserved
-    if pd.api.types.is_numeric_dtype(df[col_amount]):
-        signed_amount = df[col_amount].astype(float)
+        if col_date != 'ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ':
+            df['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ'] = df[col_date]
     else:
-        signed_amount = (
+        df['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ'] = pd.NaT
+
+    # Amount -> ΠΟΣΟ  (keep sign, handle commas/dots)
+    if pd.api.types.is_numeric_dtype(df[col_amount]):
+        df['_signed_amount'] = df[col_amount].astype(float)
+    else:
+        df['_signed_amount'] = (
             df[col_amount].astype(str)
             .str.replace('.', '', regex=False)     # thousands dot
             .str.replace(',', '.', regex=False)    # decimal comma
             .str.replace(r'[^\d\.\-]', '', regex=True)
+            .replace({'': '0', '-': '0'})
             .astype(float)
         )
+    if col_amount != 'ΠΟΣΟ':
+        df['ΠΟΣΟ'] = df['_signed_amount']
+    else:
+        # ensure ΠΟΣΟ is clean float even if read as string
+        if not pd.api.types.is_numeric_dtype(df['ΠΟΣΟ']):
+            df['ΠΟΣΟ'] = (
+                df['ΠΟΣΟ'].astype(str)
+                .str.replace('.', '', regex=False)
+                .str.replace(',', '.', regex=False)
+                .str.replace(r'[^\d\.\-]', '', regex=True)
+                .replace({'': '0', '-': '0'})
+                .astype(float)
+            )
+
+    # clean rows
+    df = df.dropna(subset=['ΠΕΡΙΓΡΑΦΗ'])
 
     results = []
     for _, row in df.iterrows():
-        original_desc = str(row[col_desc])
+        original_desc = str(row['ΠΕΡΙΓΡΑΦΗ'])
         desc = original_desc.upper()
-        amt  = float(row[col_amount]) if pd.api.types.is_numeric_dtype(df[col_amount]) else float(
-            str(row[col_amount]).replace('.', '').replace(',', '.').replace(' ', '')
-                .replace('\u00A0', '').replace('\t','')
-        ) if str(row[col_amount]).strip() else 0.0
-        # אם לא הצליח, נשתמש מהעמודה המחושבת
-        try:
-            amt = float(row[col_amount])
-        except Exception:
-            amt = float(signed_amount.loc[row.name])
-
+        amt = float(row['ΠΟΣΟ'])
         amount = abs(amt)
 
         # plot detect
@@ -1167,7 +1181,7 @@ def process_ilisia_file(df):
         is_income = amt > 0
 
         entry = {
-            "Date": row[col_date].strftime('%d/%m/%Y') if (col_date and not pd.isnull(row[col_date])) else '',
+            "Date": row['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ'].strftime('%d/%m/%Y') if pd.notnull(row['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ']) else '',
             "Income/outcome": "Income" if is_income else "Outcome",
             "Plot": plot_val,
             "Expenses Type": "Soft Cost",
@@ -1222,9 +1236,6 @@ def process_ilisia_file(df):
             entry["Description"] = "Electricity"
             filled = True
 
-
-
-
         if "ARID" in desc.upper():
             entry["Type"] = "Architect"
             entry["Supplier"] = "ARID"
@@ -1237,7 +1248,6 @@ def process_ilisia_file(df):
             entry["Description"] = "Car rent fees"
             filled = True
 
-
         if "EDEN" in desc:
             entry["Type"] = "Project management"
             entry["Supplier"] = "Accommodation"
@@ -1249,7 +1259,6 @@ def process_ilisia_file(df):
             entry["Supplier"] = "F&B"
             entry["Description"] = "F&B"
             filled = True
-
 
         if "ALL PLOTS MARKETING" in desc:
             entry["Type"] = "Marketing"
@@ -1288,7 +1297,6 @@ def process_ilisia_file(df):
             entry["Description"] = "Marketing Services fee"
             filled = True
 
-
         if any(term in desc for term in ["ACCOUNTING", "BOOKKEEP", "ECOVIS"]) and not any(word in desc for word in ["YAG", "TAG"]):
             entry["Type"] = "Accounting"
             entry["Supplier"] = "Ecovis"
@@ -1319,7 +1327,6 @@ def process_ilisia_file(df):
             entry["Description"] = "F&B"
             filled = True
 
-
         if any(word in desc for word in ["AEGEANWEB", "AEGEAN", "OLYMPIC", "SKY", "ISRAIR", "WIZZ"]):
             entry["Type"] = "Project management"
             entry["Supplier"] = "Transportation"
@@ -1332,15 +1339,13 @@ def process_ilisia_file(df):
             entry["Description"] = "F&B"
             filled = True
 
-        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
-            "villa 1" in desc or "Villa 1" in desc or "VILLA 1" in desc):
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and ("villa 1" in desc or "Villa 1" in desc or "VILLA 1" in desc):
             entry["Type"] = "Brokers"
             entry["Supplier"] = "Buyer Villa 1"
             entry["Description"] = "Broker fees"
             filled = True
 
-        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
-            "villa 2" in desc or "Villa 2" in desc or "VILLA 2" in desc):
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and ("villa 2" in desc or "Villa 2" in desc or "VILLA 2" in desc):
             entry["Type"] = "Brokers"
             entry["Supplier"] = "Buyer Villa 2"
             entry["Description"] = "Broker fees"
@@ -1354,35 +1359,29 @@ def process_ilisia_file(df):
             entry["Description"] = "Electricity"
             filled = True
 
-
-        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
-            "villa 3" in desc or "Villa 3" in desc or "VILLA 3" in desc):
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and ("villa 3" in desc or "Villa 3" in desc or "VILLA 3" in desc):
             entry["Type"] = "Brokers"
             entry["Supplier"] = "Buyer Villa 3"
             entry["Description"] = "Broker fees"
             filled = True
 
-        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
-            "villa 4" in desc or "Villa 4" in desc or "VILLA 4" in desc):
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and ("villa 4" in desc or "Villa 4" in desc or "VILLA 4" in desc):
             entry["Type"] = "Brokers"
             entry["Supplier"] = "Buyer Villa 4"
             entry["Description"] = "Broker fees"
             filled = True
 
-        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
-            "villa 5" in desc or "Villa 5" in desc or "VILLA 5" in desc):
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and ("villa 5" in desc or "Villa 5" in desc or "VILLA 5" in desc):
             entry["Type"] = "Brokers"
             entry["Supplier"] = "Buyer Villa 5"
             entry["Description"] = "Broker fees"
             filled = True
 
-        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and (
-            "villa 6" in desc or "Villa 6" in desc or "VILLA 6" in desc):
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and ("villa 6" in desc or "Villa 6" in desc or "VILLA 6" in desc):
             entry["Type"] = "Brokers"
             entry["Supplier"] = "Buyer Villa 6"
             entry["Description"] = "Broker fees"
             filled = True
-
 
         if "GOOGLE" in desc or "ΣΥΝΔΡΟΜΗ ADVANCED FOR BUSINES" in desc:
             entry["Type"] = "Marketing"
@@ -1403,7 +1402,7 @@ def process_ilisia_file(df):
             entry["Plot"] = "G2"
             filled = True
 
-        if "RF38908618000033404445701" in desc or "RF389086180000334044" in desc:  
+        if "RF38908618000033404445701" in desc or "RF389086180000334044" in desc:
             entry["Type"] = "Utility Bills"
             entry["Supplier"] = "Municipality"
             entry["Description"] = "Electricity"
@@ -1451,7 +1450,6 @@ def process_ilisia_file(df):
             entry["Plot"] = "Y3"
             filled = True
 
-
         if any(term in desc for term in ["MANAGEMENT", "MANAG.", "MGMT", "MNGMT"]) and row['ΠΟΣΟ'] in [-1550, -1550.00, -1550.0, 1550.00, 1550.0, 2055, 2055.0, 2057.0, 1550]:
             entry["Type"] = "Worker 1"
             entry["Supplier"] = "Aiolos Athens"
@@ -1471,16 +1469,15 @@ def process_ilisia_file(df):
             entry["Plot"] = "Y3"
             filled = True
 
-
         # ============================================
         # END OF Ilisia RULES
         # ============================================
-        
+
         if not filled:
             entry["Description"] = f"🟨 {entry['Description']}"
-        
+
         results.append(entry)
-    
+
     return pd.DataFrame(results)
 
 
