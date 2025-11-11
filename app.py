@@ -1212,7 +1212,7 @@ def process_ilisia_file(df):
             filled = True
 
         # --- New Rule 1 ---
-        if "ΠΚ/00505341795" in desc and row['ΠΟΣΟ'] > 0:
+        if ("ΠΚ/00505341795" in desc or "ΠΚ/02505341795" in desc) and row['ΠΟΣΟ'] > 0:
             entry["Expenses Type"] = "Operation Income"
             entry["Type"] = "Accommodation"
             entry["Supplier"] = "Booking"
