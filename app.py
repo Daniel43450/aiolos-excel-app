@@ -1103,45 +1103,107 @@ def process_athens_file(df):
 # Ilisia NBG PROCESSING FUNCTION
 # ============================================
 
+# ============================================
+# Ilisia NBG PROCESSING FUNCTION - rewritten
+# ============================================
 def process_ilisia_file(df):
-    """Process Ilisia NBG format files"""
-    df = df.dropna(subset=['ΠΕΡΙΓΡΑΦΗ'])
-    df['ΠΟΣΟ'] = df['ΠΟΣΟ'].astype(str).str.replace('.', '').str.replace(',', '.').astype(float)
-    
+    """
+    Process Ilisia NBG files for both schemas:
+    Legacy:  'ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ','ΠΕΡΙΓΡΑΦΗ','ΠΟΣΟ'
+    New:     'Ημερομηνία','Περιγραφή','Ποσό συναλλαγής','Χρέωση / Πίστωση','Valeur'
+    Output columns stay exactly as the Ilisia tab expects.
+    """
+    df = df.copy()
+
+    # ---- Resolve column names ----
+    def pick(*names):
+        for n in names:
+            if n in df.columns:
+                return n
+        return None
+
+    col_date   = pick('ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ', 'Ημερομηνία', 'Valeur')
+    col_desc   = pick('ΠΕΡΙΓΡΑΦΗ', 'Περιγραφή')
+    col_amount = pick('ΠΟΣΟ', 'Ποσό συναλλαγής')
+    col_crdr   = pick('Χρέωση / Πίστωση')  # optional
+
+    if col_desc is None or col_amount is None:
+        raise ValueError("Ilisia: missing required columns - description or amount")
+
+    # ---- Clean basic fields ----
+    df = df.dropna(subset=[col_desc])
+    # Parse date if present
+    if col_date:
+        df[col_date] = pd.to_datetime(df[col_date], dayfirst=True, errors='coerce')
+
+    # Parse amount robustly
+    if pd.api.types.is_numeric_dtype(df[col_amount]):
+        df['_amount'] = df[col_amount].astype(float)
+    else:
+        df['_amount'] = (
+            df[col_amount].astype(str)
+            .str.replace('.', '', regex=False)     # remove thousands dot
+            .str.replace(',', '.', regex=False)    # decimal comma to dot
+            .str.replace(r'[^\d\.\-]', '', regex=True)
+            .astype(float)
+        )
+
     results = []
     for _, row in df.iterrows():
-        original_desc = str(row['ΠΕΡΙΓΡΑΦΗ'])
+        original_desc = str(row[col_desc])
         desc = original_desc.upper()
-        amount = abs(row['ΠΟΣΟ'])
+
+        amt = float(row['_amount']) if pd.notnull(row['_amount']) else 0.0
+        amount_abs = abs(amt)
+
+        # Decide income vs outcome
+        if amt != 0:
+            is_income = amt > 0
+        else:
+            # fallback to credit/debit text if exists
+            if col_crdr:
+                crdr = str(row.get(col_crdr, '')).strip().lower()
+                is_income = crdr in ['πίστωση', 'credit', 'credito', 'πίστωση']
+            else:
+                is_income = False
+
+        # Plot detection from description
         plots = find_all_plots(desc)
-        
         if len(plots) == 1:
             plot_val = plots[0]
         elif len(plots) > 1:
             plot_val = "Multiple"
         else:
             plot_val = "G1 - Manolis"
-        
-        is_income = row['ΠΟΣΟ'] > 0
-        
+
+        # Format output date
+        date_out = ""
+        if col_date and pd.notnull(row[col_date]):
+            try:
+                date_out = row[col_date].strftime('%d/%m/%Y')
+            except Exception:
+                date_out = ""
+
         entry = {
-            "Date": row['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ'],
+            "Date": date_out,
             "Income/outcome": "Income" if is_income else "Outcome",
             "Plot": plot_val,
             "Expenses Type": "Soft Cost",
             "Type": "",
             "Supplier": "",
             "Description": desc,
-            "In": amount if is_income else "",
-            "Out": -amount if not is_income else "",
-            "Vat": "" ,
-            "Total": amount if is_income else -amount,
+            "In": amount_abs if is_income else "",
+            "Out": -amount_abs if not is_income else "",
+            "Vat": "",
+            "Total": amount_abs if is_income else -amount_abs,
             "Progressive Ledger Balance": "",
             "Payment details": "",
             "Original Description": original_desc
         }
-        
+
         filled = False
+
+
         
         # ============================================
         # 🔴 Ilisia RULES - ADD YOUR RULES HERE
