@@ -1229,6 +1229,93 @@ def process_ilisia_file(df):
             entry["Description"] = "Booking refund"
             filled = True
 
+        # --- Rule: Airbnb income ---
+        if "AIRBNB" in desc and row['ΠΟΣΟ'] > 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
+
+        # --- Rule: Airbnb refund ---
+        if "AIRBNB" in desc and row['ΠΟΣΟ'] < 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Booking refund"
+            filled = True
+            
+        if "ΠΚ/02555341795" in desc and row['ΠΟΣΟ'] > 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
+
+        # --- Rule: Loan repayments (LOAN / ΕΝΤΟΛΗ/ΕΜΒΑΣΜΑ / MAGONEZOS) ---
+        if any(term in desc for term in ["LOAN", "ΕΝΤΟΛΗ/ΕΜΒΑΣΜΑ ΣΕ ΑΛΛΗ ΤΡΑΠΕΖΑ", "MAGONEZOS EMMANOUIL", "MAGONEZOS"]):
+            entry["Expenses Type"] = "Loan"
+            entry["Type"] = "Hotel operation"
+            entry["Supplier"] = "Loan Broker"
+            entry["Description"] = "Loan repayment"
+            filled = True    
+
+        # --- Rule: ΠΚ/00215341795 Booking transactions ---
+        if "ΠΚ/00215341795" in desc and row['ΠΟΣΟ'] > 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
+
+        if "ΠΚ/00215341795" in desc and row['ΠΟΣΟ'] < 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Booking refund"
+            filled = True
+
+
+        # --- Rule: ΠΚ/00555341795 Booking transactions ---
+        if "ΠΚ/00555341795" in desc and row['ΠΟΣΟ'] > 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
+
+        if "ΠΚ/00555341795" in desc and row['ΠΟΣΟ'] < 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Booking refund"
+            filled = True
+
+
+
+        # --- Rule: ΠΚ/00525341795 Booking transactions ---
+        if "ΠΚ/00525341795" in desc and row['ΠΟΣΟ'] > 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
+
+        if "ΠΚ/00525341795" in desc and row['ΠΟΣΟ'] < 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Booking refund"
+            filled = True
+
+
+        if "ΠΚ/02555341795" in desc and row['ΠΟΣΟ'] < 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Booking refund"
+            filled = True
+            
         if "ΠΡΟΜΗΘΕΙΑ ΕΝΤΟΛΗΣ" in desc:
             entry["Expenses Type"] = "Soft Cost"
             entry["Type"] = "Bank"
