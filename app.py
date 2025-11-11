@@ -1523,7 +1523,7 @@ with tab1:
                     # Process based on format
                     if format_type == "Diakofti":
                         result_df = process_diakofti_file(df)
-                    elif format_type == "ATHENS":
+                    elif format_type == "Athens":
                         result_df = process_athens_file(df)
                     else:  # Ilisia NBG
                         result_df = process_ilisia_file(df)
