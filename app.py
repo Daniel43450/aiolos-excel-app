@@ -1465,10 +1465,10 @@ with tab1:
         st.markdown("### 📊 Excel Classifier")
         st.markdown("Upload your financial Excel file to automatically categorize and organize transactions.")
         
-        # File format selection (הוספנו ILISIA)
+       
         format_type = st.selectbox(
             "Select File Format",
-            ["DIAKOFTI", "ATHENS", "ILISIA"],
+            ["Diakofti", "Athens", "Ilisia NBG"],
             help="Choose the format that matches your data structure"
         )
         
