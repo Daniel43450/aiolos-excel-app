@@ -1102,38 +1102,88 @@ def process_athens_file(df):
 # ============================================
 # Ilisia NBG PROCESSING FUNCTION
 # ============================================
-
 def process_ilisia_file(df):
-    """Process Ilisia NBG format files"""
+    """Process Ilisia NBG format files (robust to column names)"""
     df = df.copy()
-    df['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ'] = pd.to_datetime(df['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ'], dayfirst=True, errors='coerce')
-    df = df.dropna(subset=['ΠΕΡΙΓΡΑΦΗ'])
-    
+
+    # --- resolve columns (date/desc/amount can arrive with several names) ---
+    def pick(*names):
+        for n in names:
+            if n in df.columns:
+                return n
+        return None
+
+    col_date   = pick('ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ', 'Ημερομηνία', 'Valeur')
+    col_desc   = pick('ΠΕΡΙΓΡΑΦΗ', 'Περιγραφή')
+    col_amount = pick('ΠΟΣΟ', 'Ποσό συναλλαγής')
+
+    if col_desc is None or col_amount is None:
+        raise ValueError("Ilisia: description or amount column missing")
+
+    # parse date if present
+    if col_date:
+        df[col_date] = pd.to_datetime(df[col_date], dayfirst=True, errors='coerce')
+
+    # clean rows
+    df = df.dropna(subset=[col_desc])
+
+    # robust amount parsing to float with sign preserved
+    if pd.api.types.is_numeric_dtype(df[col_amount]):
+        signed_amount = df[col_amount].astype(float)
+    else:
+        signed_amount = (
+            df[col_amount].astype(str)
+            .str.replace('.', '', regex=False)     # thousands dot
+            .str.replace(',', '.', regex=False)    # decimal comma
+            .str.replace(r'[^\d\.\-]', '', regex=True)
+            .astype(float)
+        )
+
     results = []
     for _, row in df.iterrows():
-        original_desc = str(row['ΠΕΡΙΓΡΑΦΗ'])
+        original_desc = str(row[col_desc])
         desc = original_desc.upper()
-        amount = abs(float(str(row['ΠΟΣΟ']).replace('.', '').replace(',', '.')))
-        
+        amt  = float(row[col_amount]) if pd.api.types.is_numeric_dtype(df[col_amount]) else float(
+            str(row[col_amount]).replace('.', '').replace(',', '.').replace(' ', '')
+                .replace('\u00A0', '').replace('\t','')
+        ) if str(row[col_amount]).strip() else 0.0
+        # אם לא הצליח, נשתמש מהעמודה המחושבת
+        try:
+            amt = float(row[col_amount])
+        except Exception:
+            amt = float(signed_amount.loc[row.name])
+
+        amount = abs(amt)
+
+        # plot detect
+        plots = find_all_plots(desc)
+        if len(plots) == 1:
+            plot_val = plots[0]
+        elif len(plots) > 1:
+            plot_val = "Multiple"
+        else:
+            plot_val = "G1 - Manolis"
+
+        is_income = amt > 0
+
         entry = {
-            "Date": row['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ'].strftime('%d/%m/%Y') if not pd.isnull(row['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ']) else '',
-            "Income/outcome": "Income" if row['ΠΟΣΟ'] > 0 else "Outcome",
-            "Plot": "G1 - Manolis",
+            "Date": row[col_date].strftime('%d/%m/%Y') if (col_date and not pd.isnull(row[col_date])) else '',
+            "Income/outcome": "Income" if is_income else "Outcome",
+            "Plot": plot_val,
             "Expenses Type": "Soft Cost",
             "Type": "",
             "Supplier": "",
             "Description": desc,
-            "In": amount if row['ΠΟΣΟ'] > 0 else "",
-            "Out": -amount if row['ΠΟΣΟ'] < 0 else "",
+            "In": amount if is_income else "",
+            "Out": -amount if not is_income else "",
             "Vat": "",
-            "Total": amount if row['ΠΟΣΟ'] > 0 else -amount,
+            "Total": amount if is_income else -amount,
             "Progressive Ledger Balance": "",
             "Payment details": "",
             "Original Description": original_desc
         }
-        
-        filled = False
 
+        filled = False
         
         # ============================================
         # 🔴 Ilisia RULES - ADD YOUR RULES HERE
