@@ -1205,11 +1205,86 @@ def process_ilisia_file(df):
         # ============================================
         # 🔴 Ilisia RULES - ADD YOUR RULES HERE
         # ============================================
+        
         if "COM POI" in desc or "COM POO" in desc:
             entry["Type"] = "Bank"
             entry["Supplier"] = "Bank"
             entry["Description"] = "Bank fees"
             filled = True
+
+        
+        # --- Rule: Booking Operation Income (positive) ---
+        if ("ΠΚ/00505341795" in desc or "ΠΚ/02505341795" in desc) and row['ΠΟΣΟ'] > 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
+
+        # --- Rule: Booking Refund (negative) ---
+        if ("ΠΚ/00505341795" in desc or "ΠΚ/02505341795" in desc) and row['ΠΟΣΟ'] < 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Booking refund"
+            filled = True
+
+        # --- Rule: Booking.com Accommodation Income (positive) ---
+        if "BOOKING.COM B.V." in desc and row['ΠΟΣΟ'] > 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
+
+        # --- Rule: Social Media Invoice 56 ---
+        if "SOCIAL MEDIA INV 56" in desc:
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Hotel operation"
+            entry["Supplier"] = "Vassilis"
+            entry["Description"] = "Promotion"
+            filled = True
+
+        # --- Rule: Transfer Between Accounts August (negative) ---
+        if "TRANSFER BETWEEN ACCOUNTS AUGUST" in desc and row['ΠΟΣΟ'] < 0:
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Cash facilitation"
+            entry["Supplier"] = "Hotel"
+            entry["Description"] = "Cash facilitation"
+            filled = True
+
+        # --- Rule: Septic Tank expenses ---
+        if "SEPTIC" in desc:
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Septic Tank"
+            entry["Supplier"] = "Septic Tank"
+            entry["Description"] = "Septic Tank"
+            filled = True
+
+        # --- Rule: Roompay Invoice Registration ---
+        if "ROOMPAY INVOICE REGISTRATION" in desc:
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Hotel operation"
+            entry["Supplier"] = "Web Hotelier"
+            entry["Description"] = "Website"
+            filled = True
+
+        # --- Rule: Bank Fees (ΠΡΟΜΗΘΕΙΕΣ ΕΞΟΔΑ) ---
+        if "ΠΡΟΜΗΘΕΙΕΣ ΕΞΟΔΑ" in desc:
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Bank"
+            entry["Supplier"] = "Bank"
+            entry["Description"] = "Bank fees"
+            filled = True
+
+        # --- Rule: Etheras Properties Management / Anna Kythira Supervision ---
+        if "ETHERAS PROPERTIES MANAGEMENT" in desc and any (term in desc for term in ["LOURANTOU INVOICE", "MANAGEMENT", "SUPERVISION"]):
+            entry["Expenses Type"] = "Hotel operation"
+            entry["Type"] = "Anna Kythira"
+            entry["Supplier"] = "Anna Kythira"
+            entry["Description"] = "Supervision monthly fee"
+            filled = True
+                    
 
         # --- New Rule 1 ---
         if ("ΠΚ/00505341795" in desc or "ΠΚ/02505341795" in desc) and row['ΠΟΣΟ'] > 0:
