@@ -1211,6 +1211,15 @@ def process_ilisia_file(df):
             entry["Description"] = "Bank fees"
             filled = True
 
+        # --- New Rule 1 ---
+        if "ΠΚ/00505341795" in desc and row['ΠΟΣΟ'] > 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
+
+
         if "STAMATIS PANAGIOTIS STAVRO" in desc.upper():
             entry["Plot"] = "G1 - Manolis"
             entry["Expenses Type"] = "Operation Income"
