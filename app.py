@@ -1194,7 +1194,10 @@ def process_ilisia_file(df):
             "Total": amount if is_income else -amount,
             "Progressive Ledger Balance": "",
             "Payment details": "",
-            "Original Description": original_desc
+            "Original Description": original_desc,
+            "Year": row['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ'].year if pd.notnull(row['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ']) else "",
+            "Bank": "NBG" 
+            
         }
 
         filled = False
