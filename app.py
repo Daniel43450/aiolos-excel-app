@@ -822,22 +822,19 @@ def process_athens_file(df):
         original_desc = str(row['Περιγραφή'])
         desc = original_desc.upper()
         amount = abs(float(str(row['Ποσό συναλλαγής']).replace(',', '.')))
-
-        # Π = Πίστωση (Credit) → הכנסה,  Χ = Χρέωση (Debit) → הוצאה
-        is_credit = str(row['Χρέωση / Πίστωση']).strip() == "Π"
-
+        
         entry = {
             "Date": row['Ημερομηνία'].strftime('%d/%m/%Y') if not pd.isnull(row['Ημερομηνία']) else '',
-            "Income/Outcome": "Income" if is_credit else "Outcome",
+            "Income/Outcome": "Income" if row['Ποσό συναλλαγής'] > 0 else "Outcome",
             "Expenses Type": "Soft Cost",
             "Location": "All Projects",
             "Project": "All Projects",
             "Supplier": "",
             "Type": "",
             "Description": desc,
-            "Income": amount if is_credit else "",
-            "Outcome": -amount if not is_credit else "",
-            "Total": amount if is_credit else -amount,
+            "Income": amount if row['Ποσό συναλλαγής'] > 0 else "",
+            "Outcome": -amount if row['Ποσό συναλλαγής'] < 0 else "",
+            "Total": amount if row['Ποσό συναλλαγής'] > 0 else -amount,
             "Balance": "",
             "Repayment": "",
             "Original Description": original_desc
