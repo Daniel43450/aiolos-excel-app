@@ -839,7 +839,6 @@ def process_athens_file(df):
             "Repayment": "",
             "Original Description": original_desc
         }
-
         
         filled = False
         
