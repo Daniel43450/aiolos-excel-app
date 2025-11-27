@@ -825,16 +825,16 @@ def process_athens_file(df):
         
         entry = {
             "Date": row['Ημερομηνία'].strftime('%d/%m/%Y') if not pd.isnull(row['Ημερομηνία']) else '',
-            "Income/Outcome": "Income" if row['Ποσό συναλλαγής'] > 0 else "Outcome",
+            "Income/Outcome": "Income" if row['Ποσό εντολής'] > 0 else "Outcome",
             "Expenses Type": "Soft Cost",
             "Location": "All Projects",
             "Project": "All Projects",
             "Supplier": "",
             "Type": "",
             "Description": desc,
-            "Income": amount if row['Ποσό συναλλαγής'] > 0 else "",
-            "Outcome": -amount if row['Ποσό συναλλαγής'] < 0 else "",
-            "Total": amount if row['Ποσό συναλλαγής'] > 0 else -amount,
+            "Income": amount if row['Ποσό εντολής'] > 0 else "",
+            "Outcome": -amount if row['Ποσό εντολής'] < 0 else "",
+            "Total": amount if row['Ποσό εντολής'] > 0 else -amount,
             "Balance": "",
             "Repayment": "",
             "Original Description": original_desc
