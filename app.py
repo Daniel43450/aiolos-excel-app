@@ -1213,6 +1213,12 @@ def process_ilisia_file(df):
             entry["Description"] = "Bank fees"
             filled = True
 
+        if "SOCIAL MEDIA" in desc:
+            entry["Expenses Type"] = "Marketing"
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "Vassilis"
+            entry["Description"] = "Social Media"
+            filled = True
         
         # --- Rule: Booking Operation Income (positive) ---
         if ("ΠΚ/00505341795" in desc or "ΠΚ/02505341795" in desc) and row['ΠΟΣΟ'] > 0:
