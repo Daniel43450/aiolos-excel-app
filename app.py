@@ -1711,6 +1711,622 @@ def process_ilisia_file(df):
 
     return pd.DataFrame(results)
 
+# ============================================
+# Ilisia EURO PROCESSING FUNCTION
+# ============================================
+def process_ilisia_euro_file(df):
+    """Process Ilisia EURO NBG files and output same structure as Ilisia NBG"""
+    df = df.copy()
+
+    # ----- helper: choose first existing column from a list -----
+    def pick(*names):
+        for n in names:
+            if n in df.columns:
+                return n
+        return None
+
+    # עמודות מהקובץ של Ilisia Euro
+    col_date    = pick("ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ", "ΗΜ/ΝΙΑ ΑΞΙΑΣ", "Ημερομηνία", "Valeur")
+    col_desc    = pick("ΠΕΡΙΓΡΑΦΗ", "Περιγραφή", "Περιγραφή συναλλαγής")
+    col_amount  = pick("ΠΟΣΟ", "Ποσό εντολής", "Ποσό συναλλαγής", "ΠΟΣΟ ΣΥΝΑΛΛΑΓΗΣ")
+    col_balance = pick("ΥΠΟΛΟΙΠΟ", "Λογιστικό Υπόλοιπο")
+
+    if col_desc is None or col_amount is None:
+        raise ValueError("Ilisia EURO: description or amount column missing")
+
+    # ----- Description -> ΠΕΡΙΓΡΑΦΗ -----
+    if col_desc != "ΠΕΡΙΓΡΑΦΗ":
+        df["ΠΕΡΙΓΡΑΦΗ"] = df[col_desc]
+
+    # ----- Date -> ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ -----
+    if col_date:
+        df[col_date] = pd.to_datetime(df[col_date], dayfirst=True, errors="coerce")
+        if col_date != "ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ":
+            df["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"] = df[col_date]
+    else:
+        df["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"] = pd.NaT
+
+    # ----- Amount -> ΠΟΣΟ (float חתום, עם פלוס/מינוס) -----
+    raw_amt = df[col_amount].astype(str).str.strip()
+    cleaned_amt = (
+        raw_amt
+        .str.replace(".", "", regex=False)      # נקודה אלפים
+        .str.replace(",", ".", regex=False)     # פסיק עשרוני
+        .str.replace(r"[^\d\.\-]", "", regex=True)
+        .replace({"": "0", "-": "0"})
+    )
+    df["ΠΟΣΟ"] = cleaned_amt.astype(float)
+
+    # ----- Balance (אם קיים) -> _balance -----
+    if col_balance:
+        raw_bal = df[col_balance].astype(str).str.strip()
+        cleaned_bal = (
+            raw_bal
+            .str.replace(".", "", regex=False)
+            .str.replace(",", ".", regex=False)
+            .str.replace(r"[^\d\.\-]", "", regex=True)
+            .replace({"": "0", "-": "0"})
+        )
+        df["_balance"] = cleaned_bal.astype(float)
+    else:
+        df["_balance"] = ""
+
+    # מסירים שורות בלי תיאור
+    df = df.dropna(subset=["ΠΕΡΙΓΡΑΦΗ"])
+
+    # אם יש לך כבר פונקציה כזו בקוד, פשוט הסר את ההגדרה כאן
+    def find_all_plots(desc: str):
+        return []
+
+    results = []
+    for _, row in df.iterrows():
+        original_desc = str(row["ΠΕΡΙΓΡΑΦΗ"])
+        desc = original_desc.upper()
+        amt = float(row["ΠΟΣΟ"])      # סכום חתום
+        amount = abs(amt)
+
+        # plot detect (כמו בקוד המקורי שלך)
+        plots = find_all_plots(desc)
+        if len(plots) == 1:
+            plot_val = plots[0]
+        elif len(plots) > 1:
+            plot_val = "Multiple"
+        else:
+            plot_val = "G1 - Manolis"
+
+        is_income = amt > 0
+
+        entry = {
+            "Date": row["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"].strftime("%d/%m/%Y") if pd.notnull(row["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"]) else "",
+            "Income/outcome": "Income" if is_income else "Outcome",
+            "Plot": plot_val,
+            "Expenses Type": "Soft Cost",
+            "Type": "",
+            "Supplier": "",
+            "Description": desc,
+            "In": amount if is_income else "",
+            "Out": -amount if not is_income else "",
+            "Vat": "",
+            "Total": amount if is_income else -amount,
+            "Progressive Ledger Balance": row["_balance"],
+            "Payment details": "",
+            "Original Description": original_desc,
+            "Year": row["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"].year if pd.notnull(row["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"]) else "",
+            "Bank": "EuroBank",   # אפשר לשנות ל-NBG אם אתה רוצה אחידות מלאה
+        }
+
+        filled = False
+
+        # ============================================
+        # 🔴 Ilisia EURO RULES - כמו החוקים הקודמים
+        # (מותר להעתיק מפונקציית Ilisia NBG אחד לאחד)
+        # ============================================
+                
+        if "COM POI" in desc or "COM POO" in desc:
+            entry["Type"] = "Bank"
+            entry["Supplier"] = "Bank"
+            entry["Description"] = "Bank fees"
+            filled = True
+
+        if "SOCIAL MEDIA" in desc:
+            entry["Expenses Type"] = "Marketing"
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "Vassilis"
+            entry["Description"] = "Social Media"
+            filled = True
+        
+        # --- Rule: Booking Operation Income (positive) ---
+        if ("ΠΚ/00505341795" in desc or "ΠΚ/02505341795" in desc) and row['ΠΟΣΟ'] > 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
+
+        # --- Rule: Booking Refund (negative) ---
+        if ("ΠΚ/00505341795" in desc or "ΠΚ/02505341795" in desc) and row['ΠΟΣΟ'] < 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Booking refund"
+            filled = True
+
+        # --- Rule: Airbnb income ---
+        if "AIRBNB" in desc and row['ΠΟΣΟ'] > 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
+
+        # --- Rule: Airbnb refund ---
+        if "AIRBNB" in desc and row['ΠΟΣΟ'] < 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Booking refund"
+            filled = True
+            
+        if "ΠΚ/02555341795" in desc and row['ΠΟΣΟ'] > 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
+
+        # --- Rule: Loan repayments (LOAN / ΕΝΤΟΛΗ/ΕΜΒΑΣΜΑ / MAGONEZOS) ---
+        if any(term in desc for term in ["LOAN", "ΕΝΤΟΛΗ/ΕΜΒΑΣΜΑ ΣΕ ΑΛΛΗ ΤΡΑΠΕΖΑ", "MAGONEZOS EMMANOUIL", "MAGONEZOS"]):
+            entry["Expenses Type"] = "Loan"
+            entry["Type"] = "Hotel operation"
+            entry["Supplier"] = "Loan Broker"
+            entry["Description"] = "Loan repayment"
+            filled = True    
+
+        # --- Rule: ΠΚ/00215341795 Booking transactions ---
+        if "ΠΚ/00215341795" in desc and row['ΠΟΣΟ'] > 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
+
+        if "ΠΚ/00215341795" in desc and row['ΠΟΣΟ'] < 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Booking refund"
+            filled = True
+
+
+        # --- Rule: ΠΚ/00555341795 Booking transactions ---
+        if "ΠΚ/00555341795" in desc and row['ΠΟΣΟ'] > 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
+
+        if "ΠΚ/00555341795" in desc and row['ΠΟΣΟ'] < 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Booking refund"
+            filled = True
+
+
+
+        # --- Rule: ΠΚ/00525341795 Booking transactions ---
+        if "ΠΚ/00525341795" in desc and row['ΠΟΣΟ'] > 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
+
+        if "ΠΚ/00525341795" in desc and row['ΠΟΣΟ'] < 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Booking refund"
+            filled = True
+
+
+        if "ΠΚ/02555341795" in desc and row['ΠΟΣΟ'] < 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Booking refund"
+            filled = True
+            
+        if "ΠΡΟΜΗΘΕΙΑ ΕΝΤΟΛΗΣ" in desc:
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Bank"
+            entry["Supplier"] = "Bank"
+            entry["Description"] = "Bank fees"
+            filled = True
+
+        # --- Rule: Bank expenses / ΠΡΟΜΗΘΕΙΕΣ ΕΞΟΔΑ ---
+        if "ΠΡΟΜΗΘΕΙΕΣ ΕΞΟΔΑ" in desc:
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Bank"
+            entry["Supplier"] = "Bank"
+            entry["Description"] = "Bank fees"
+            filled = True
+
+    
+        if any(k in desc for k in ["PROTERGIA", "ENERGETICA", "DEI", "ΔΕΗ"]):
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Hotel operation"
+            entry["Supplier"] = "Electricity"
+            entry["Description"] = "Electricity bill"
+            filled = True
+
+
+        # --- Rule: Pool cleaning invoice ---
+        if "INV400009529618476" in desc:
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Hotel operation"
+            entry["Supplier"] = "Cleaning"
+            entry["Description"] = "Pool"
+            filled = True
+
+        if any(term in desc.upper() for term in ["POOL", "POOLS"]):
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Hotel operation"
+            entry["Supplier"] = "Cleaning"
+            entry["Description"] = "Pool"
+            filled = True
+
+        
+
+        if any(k in desc for k in ["ΠΡΟΜΗΘΕΙΑ ΕΝΤΟΛΗΣ", "ΕΞΟΔΑ ΤΡ ΠΛΗΡΩΜΗΣ"]):
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Bank"
+            entry["Supplier"] = "Bank"
+            entry["Description"] = "Bank fees"
+            filled = True
+
+
+
+        # --- Rule: Booking.com Accommodation Income (positive) ---
+        if "BOOKING.COM B.V." in desc and row['ΠΟΣΟ'] > 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
+
+        # --- Rule: Social Media Invoice 56 ---
+        if "SOCIAL MEDIA INV 56" in desc:
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Hotel operation"
+            entry["Supplier"] = "Vassilis"
+            entry["Description"] = "Promotion"
+            filled = True
+
+        # --- Rule: Transfer Between Accounts August (negative) ---
+        if "TRANSFER BETWEEN ACCOUNTS AUGUST" in desc and row['ΠΟΣΟ'] < 0:
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Cash facilitation"
+            entry["Supplier"] = "Hotel"
+            entry["Description"] = "Cash facilitation"
+            filled = True
+
+        # --- Rule: Septic Tank expenses ---
+        if "SEPTIC" in desc:
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Septic Tank"
+            entry["Supplier"] = "Septic Tank"
+            entry["Description"] = "Septic Tank"
+            filled = True
+
+        # --- Rule: Roompay Invoice Registration ---
+        if "ROOMPAY INVOICE REGISTRATION" in desc:
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Hotel operation"
+            entry["Supplier"] = "Web Hotelier"
+            entry["Description"] = "Website"
+            filled = True
+
+        # --- Rule: Bank Fees (ΠΡΟΜΗΘΕΙΕΣ ΕΞΟΔΑ) ---
+        if "ΠΡΟΜΗΘΕΙΕΣ ΕΞΟΔΑ" in desc:
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Bank"
+            entry["Supplier"] = "Bank"
+            entry["Description"] = "Bank fees"
+            filled = True
+
+        # --- Rule: Etheras Properties Management / Anna Kythira Supervision ---
+        if "ETHERAS PROPERTIES MANAGEMENT" in desc and any (term in desc for term in ["LOURANTOU INVOICE", "MANAGEMENT", "SUPERVISION"]):
+            entry["Expenses Type"] = "Hotel operation"
+            entry["Type"] = "Anna Kythira"
+            entry["Supplier"] = "Anna Kythira"
+            entry["Description"] = "Supervision monthly fee"
+            filled = True
+                    
+
+        # --- New Rule 1 ---
+        if ("ΠΚ/00505341795" in desc or "ΠΚ/02505341795" in desc) and row['ΠΟΣΟ'] > 0:
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
+
+
+        if "STAMATIS PANAGIOTIS STAVRO" in desc.upper():
+            entry["Plot"] = "G1 - Manolis"
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Rent"
+            entry["Supplier"] = "Tenant - Taverne"
+            entry["Description"] = "Monthly Taverne rent"
+            filled = True
+
+        if any(term in desc.upper() for term in ["TRANSFER BETWEEN ACCOUNTS", "NBG TO EURO"]):
+            entry["Plot"] = "G1 - Manolis"
+            entry["Expenses Type"] = "Operation Income"
+            entry["Type"] = "Accommodation"
+            entry["Supplier"] = "Booking"
+            entry["Description"] = "Accommodation fees"
+            filled = True
+
+        if "ZARA" in desc.upper():
+            entry["Type"] = "Hotel operation"
+            entry["Supplier"] = "Maintenance"
+            entry["Description"] = "Maintenance"
+            filled = True
+
+        if "WATT-VOLT" in desc.upper():
+            entry["Type"] = "Authorities"
+            entry["Supplier"] = "Electricity"
+            entry["Description"] = "Electricity"
+            filled = True
+
+        if "ARID" in desc.upper():
+            entry["Type"] = "Architect"
+            entry["Supplier"] = "ARID"
+            entry["Description"] = "Planning"
+            filled = True
+
+        if "PANAYOTIS" in desc.upper():
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Panayotis"
+            entry["Description"] = "Car rent fees"
+            filled = True
+
+        if "EDEN" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Accommodation"
+            entry["Description"] = "Hotel"
+            filled = True
+
+        if any(keyword in desc.upper() for keyword in ["TRANSPORT KALLI GR","GRIGORAK KYTHI GR", "O MAGOS KYTHI GR", "STAMATIS KYTHI GR", "KONTOLEO KYTHI GR", "VITSIO KYTHI GR", "BOURNAKI KYTHI GR", "STAVROU KYTHI GR"]):
+            entry["Type"] = "General"
+            entry["Supplier"] = "F&B"
+            entry["Description"] = "F&B"
+            filled = True
+
+        if "ALL PLOTS MARKETING" in desc:
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "Marketing"
+            entry["Description"] = "Marketing Services fee"
+            filled = True
+
+        if "CALEN" in desc or "HARD COST" in desc:
+            entry["Expenses Type"] = "Hard Cost"
+            entry["Type"] = "Contractor"
+            entry["Supplier"] = "Calen"
+            entry["Description"] = "Construction works"
+            filled = True
+
+        if "SUPERVISION" in desc:
+            entry["Type"] = "Supervision"
+            entry["Supplier"] = "TAG ARCHITECTS"
+            entry["Description"] = "Supervision"
+            filled = True
+
+        if "HOLIDAYS TEL" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Flight"
+            filled = True
+
+        if "EL AL" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Flight"
+            filled = True
+
+        if any(keyword in desc.upper() for keyword in ["FACEBOOK", "FACEBK", "FB.ME", "META"]):
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "Marketing"
+            entry["Description"] = "Marketing Services fee"
+            filled = True
+
+        if any(term in desc for term in ["ACCOUNTING", "BOOKKEEP", "ECOVIS"]) and not any(word in desc for word in ["YAG", "TAG"]):
+            entry["Type"] = "Accounting"
+            entry["Supplier"] = "Ecovis"
+            entry["Description"] = "Accountant monthly fees"
+            filled = True
+
+        if "GAS" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Gas station"
+            filled = True
+
+        if "DRAKAKIS" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Drakakis Tours"
+            entry["Description"] = "Car rent fees"
+            filled = True
+
+        if "FLIGHT" in desc or "AEGEAN" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Flight"
+            filled = True
+
+        if "TONY S" in desc or "Tony S" in desc or "tony s" in desc or "eat" in desc or "EAT" in desc:
+            entry["Type"] = "General"
+            entry["Supplier"] = "F&B"
+            entry["Description"] = "F&B"
+            filled = True
+
+        if any(word in desc for word in ["AEGEANWEB", "AEGEAN", "OLYMPIC", "SKY", "ISRAIR", "WIZZ"]):
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Flight"
+            filled = True
+
+        if any(word in desc for word in ["DINNER", "FOOD", "CAFE", "COFFEE", "LUNCH", "BREAKFAST"]):
+            entry["Type"] = "General"
+            entry["Supplier"] = "F&B"
+            entry["Description"] = "F&B"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and ("villa 1" in desc or "Villa 1" in desc or "VILLA 1" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 1"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and ("villa 2" in desc or "Villa 2" in desc or "VILLA 2" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 2"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if "RF919086180000334" in desc:
+            entry["Plot"] = "R4"
+            entry["Expenses Type"] = "Soft Cost"
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and ("villa 3" in desc or "Villa 3" in desc or "VILLA 3" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 3"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and ("villa 4" in desc or "Villa 4" in desc or "VILLA 4" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 4"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and ("villa 5" in desc or "Villa 5" in desc or "VILLA 5" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 5"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if ("broker" in desc or "Broker" in desc or "BROKER" in desc) and ("villa 6" in desc or "Villa 6" in desc or "VILLA 6" in desc):
+            entry["Type"] = "Brokers"
+            entry["Supplier"] = "Buyer Villa 6"
+            entry["Description"] = "Broker fees"
+            filled = True
+
+        if "GOOGLE" in desc or "ΣΥΝΔΡΟΜΗ ADVANCED FOR BUSINES" in desc:
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "Marketing"
+            entry["Description"] = "Marketing Services fee"
+            filled = True
+
+        if "CRM" in desc:
+            entry["Type"] = "Marketing"
+            entry["Supplier"] = "reWire"
+            entry["Description"] = "CRM"
+            filled = True
+
+        if "RF91908618000033404472101" in desc or "PROT-RF549086180000334" in desc:
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            entry["Plot"] = "G2"
+            filled = True
+
+        if "RF38908618000033404445701" in desc or "RF389086180000334044" in desc:
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            entry["Plot"] = "Y3"
+            filled = True
+
+        if "RF91908618000033404472101" in desc or "PROT-919086180000334" in desc:
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            entry["Plot"] = "R4"
+            filled = True
+
+        if "UBER" in desc or "TAXI" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Athens Taxi"
+            filled = True
+
+        if "OPENAI" in desc:
+            entry["Type"] = "General"
+            entry["Supplier"] = "Office expenses"
+            entry["Description"] = "Office expense"
+            filled = True
+
+        if "TAG" in desc:
+            entry["Type"] = "Architect"
+            entry["Supplier"] = "TAG ARCHITECTS"
+            if "SUP" in desc:
+                entry["Description"] = "Supervision"
+            else:
+                entry["Description"] = "Planning"
+            filled = True
+
+        if "OASA" in desc:
+            entry["Type"] = "Project management"
+            entry["Supplier"] = "Transportation"
+            entry["Description"] = "Transportation"
+            filled = True
+
+        if "ΔΗΜΟ-RF369029090000097" in desc:
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Water"
+            entry["Plot"] = "Y3"
+            filled = True
+
+        if any(term in desc for term in ["MANAGEMENT", "MANAG.", "MGMT", "MNGMT"]) and row['ΠΟΣΟ'] in [-1550, -1550.00, -1550.0, 1550.00, 1550.0, 2055, 2055.0, 2057.0, 1550]:
+            entry["Type"] = "Worker 1"
+            entry["Supplier"] = "Aiolos Athens"
+            entry["Description"] = "management fees"
+            filled = True
+
+        if any(term in desc for term in ["COSM", "COSMOTE", "PHONE"]):
+            entry["Type"] = "Hotel operation"
+            entry["Supplier"] = "Cosmote"
+            entry["Description"] = "Telephone"
+            filled = True
+
+        if "RF389086180000334" in desc:
+            entry["Type"] = "Utility Bills"
+            entry["Supplier"] = "Municipality"
+            entry["Description"] = "Electricity"
+            entry["Plot"] = "Y3"
+            filled = True
+
+        # ============================================
+        # END OF Ilisia RULES
+        # ============================================
+
+        if not filled:
+            entry["Description"] = f"🟨 {entry['Description']}"
+
+        results.append(entry)
+
+    return pd.DataFrame(results)
+
+
 
 # ============================================
 # MAIN TABS
@@ -1730,19 +2346,20 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
 with tab1:
     col1, col2 = st.columns([2, 1])
     
+    # -------------------------------------
+    # LEFT SIDE UI
+    # -------------------------------------
     with col1:
         st.markdown('<div class="info-card">', unsafe_allow_html=True)
         st.markdown("### 📊 Excel Classifier")
         st.markdown("Upload your financial Excel file to automatically categorize and organize transactions.")
         
-       
         format_type = st.selectbox(
             "Select File Format",
-            ["Diakofti", "Athens", "Ilisia NBG"],
+            ["Diakofti Euro", "Athens NBG", "Ilisia NBG", "Ilisia Euro"],
             help="Choose the format that matches your data structure"
         )
         
-        # File uploader
         uploaded_file = st.file_uploader(
             "Upload Excel or CSV File",
             type=["xlsx", "csv", "xls"],
@@ -1750,14 +2367,18 @@ with tab1:
         )
         st.markdown('</div>', unsafe_allow_html=True)
     
+    # -------------------------------------
+    # RIGHT SIDE INFO PANEL
+    # -------------------------------------
     with col2:
         st.markdown('<div class="info-card">', unsafe_allow_html=True)
         st.markdown("### 📌 Quick Guide")
         st.markdown("""
         **Formats:**
-        - **Diakofti**: Plot-based transactions
-        - **Athens**: Office transactions
-        - **Ilisia NBG**: Ilisia project transactions
+        - **Diakofti Euro**: Plot-based transactions
+        - **Athens NBG**: Office expenses
+        - **Ilisia NBG**: Ilisia project from NBG
+        - **Ilisia Euro**: New Ilisia Euro account
         
         **Supported Files:**
         - Excel (.xlsx, .xls)
@@ -1769,20 +2390,22 @@ with tab1:
         """)
         st.markdown('</div>', unsafe_allow_html=True)
     
-    # Process uploaded file
+    # -------------------------------------
+    # PROCESSING SECTION
+    # -------------------------------------
     if uploaded_file:
         st.markdown('<div class="success-msg">✅ File uploaded successfully!</div>', unsafe_allow_html=True)
-        
-        # Process button
+
         if st.button("🚀 Process File", use_container_width=True, key="process_excel"):
             with st.spinner("Processing your data..."):
                 try:
-                    # Read file
+                    # ----------------------------
+                    # READ FILE (Excel / CSV)
+                    # ----------------------------
                     if uploaded_file.name.lower().endswith('.csv'):
-                        if format_type == "Diakofti":
+                        if format_type == "Diakofti Euro":
                             df = pd.read_csv(uploaded_file, encoding="ISO-8859-7")
                         else:
-                            # נסה UTF-8 ואז נפילה ל-ISO-8859-7 במקרה של יוונית
                             try:
                                 df = pd.read_csv(uploaded_file)
                             except UnicodeDecodeError:
@@ -1790,47 +2413,60 @@ with tab1:
                     else:
                         df = pd.read_excel(uploaded_file)
                     
-                    # Process based on format
-                    if format_type == "Diakofti":
+                    # ----------------------------
+                    # SELECT PROCESSOR FUNCTION
+                    # ----------------------------
+                    if format_type == "Diakofti Euro":
                         result_df = process_diakofti_file(df)
-                    elif format_type == "Athens":
-                        result_df = process_athens_file(df)
-                    else:  # Ilisia NBG
-                        result_df = process_ilisia_file(df)
                     
-                    # Calculate metrics
+                    elif format_type == "Athens NBG":
+                        result_df = process_athens_file(df)
+                    
+                    elif format_type == "Ilisia NBG":
+                        result_df = process_ilisia_file(df)
+
+                    elif format_type == "Ilisia Euro":   # ⭐ הפונקציה החדשה
+                        result_df = process_ilisia_euro_file(df)
+                    
+                    
+                    # ----------------------------
+                    # METRICS
+                    # ----------------------------
                     total_entries = len(result_df)
                     needs_review = result_df['Description'].astype(str).str.contains('🟨').sum() if total_entries else 0
                     auto_classified = total_entries - needs_review
                     success_rate = (auto_classified / total_entries * 100) if total_entries > 0 else 0
                     
-                    # Display metrics
-                    st.markdown("""
+                    st.markdown(f"""
                     <div class="metric-container">
                         <div class="metric-box">
-                            <div class="metric-value">{}</div>
+                            <div class="metric-value">{total_entries}</div>
                             <div class="metric-label">Total Entries</div>
                         </div>
                         <div class="metric-box">
-                            <div class="metric-value">{}</div>
+                            <div class="metric-value">{auto_classified}</div>
                             <div class="metric-label">Auto-Classified</div>
                         </div>
                         <div class="metric-box">
-                            <div class="metric-value">{}</div>
+                            <div class="metric-value">{needs_review}</div>
                             <div class="metric-label">Need Review</div>
                         </div>
                         <div class="metric-box">
-                            <div class="metric-value">{:.1f}%</div>
+                            <div class="metric-value">{success_rate:.1f}%</div>
                             <div class="metric-label">Success Rate</div>
                         </div>
                     </div>
-                    """.format(total_entries, auto_classified, needs_review, success_rate), unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
                     
-                    # Show preview
+                    # ----------------------------
+                    # PREVIEW
+                    # ----------------------------
                     st.markdown("### 📋 Data Preview")
                     st.dataframe(result_df.head(10), use_container_width=True)
                     
-                    # Download button
+                    # ----------------------------
+                    # DOWNLOAD BUTTON
+                    # ----------------------------
                     output = BytesIO()
                     result_df.to_excel(output, index=False, engine='openpyxl')
                     output.seek(0)
@@ -1842,7 +2478,7 @@ with tab1:
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         use_container_width=True
                     )
-                    
+                
                 except Exception as e:
                     st.error(f"❌ Error processing file: {str(e)}")
 
