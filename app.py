@@ -1716,73 +1716,35 @@ def process_ilisia_file(df):
 # ============================================
 def process_ilisia_euro_file(df):
     """
-    Process Ilisia EURO files
-    INPUT: Athens format (Ημερομηνία, Περιγραφή, Ποσό συναלλαγής/Ποσό εντολής)
-    OUTPUT: Ilisia NBG format with all rules
+    Process Ilisia EURO files (Eurobank format - identical to Diakofti structure)
+    INPUT: Eurobank CSV (ΗΜ/ΝΙΑ, ΠΕΡΙΓΡΑΦΗ, ΠΟΣΟ)
+    OUTPUT: Ilisia NBG format with Ilisia rules
     """
+    
+    # ניקוי והכנת הנתונים (זהה ל-Diakofti)
     df = df.copy()
+    df = df.dropna(subset=['ΠΕΡΙΓΡΑΦΗ'])
     
-    # --------------------------------------
-    # 1. נרמול שמות עמודות (Athens format)
-    # --------------------------------------
-    df.columns = [c.strip() for c in df.columns]
-    
-    # זיהוי עמודות - Athens format
-    col_date = None
-    col_desc = None
-    col_amount = None
-    
-    for c in df.columns:
-        if 'ΗΜ' in c or 'Ημερομηνία' in c:
-            col_date = c
-        elif 'ΠΕΡΙ' in c or 'Περιγραφή' in c:
-            col_desc = c
-        elif 'Ποσό συναλλαγής' in c:
-            col_amount = c
-        elif 'Ποσό εντολής' in c and not col_amount:  # fallback
-            col_amount = c
-    
-    if not col_desc or not col_amount:
-        raise ValueError("Ilisia Euro: Missing Περιγραφή or Ποσό columns")
-    
-    # --------------------------------------
-    # 2. ניקוי וסטנדרטיזציה
-    # --------------------------------------
-    # תאריך
-    if col_date:
-        df[col_date] = pd.to_datetime(df[col_date], dayfirst=True, errors='coerce')
-    else:
-        df[col_date] = pd.NaT
-    
-    # סכום - ניקוי מנקודות ופסיקים
-    if pd.api.types.is_numeric_dtype(df[col_amount]):
-        df['_clean_amount'] = df[col_amount].astype(float)
-    else:
-        df['_clean_amount'] = (
-            df[col_amount].astype(str)
-            .str.replace('.', '', regex=False)  # הסרת נקודות (thousands)
-            .str.replace(',', '.', regex=False)  # המרת פסיק לנקודה עשרונית
-            .str.replace(r'[^\d\.\-]', '', regex=True)
-            .replace({'': '0', '-': '0'})
-            .astype(float)
-        )
-    
-    # הסרת שורות ריקות
-    df = df.dropna(subset=[col_desc])
+    # המרת סכומים לפורמט נכון
+    df['ΠΟΣΟ'] = (
+        df['ΠΟΣΟ'].astype(str)
+        .str.replace('.', '', regex=False)      # הסרת נקודות אלפים
+        .str.replace(',', '.', regex=False)     # המרת פסיק לנקודה
+        .str.replace(r'[^\d\.\-]', '', regex=True)
+        .replace({'': '0', '-': '0'})
+        .astype(float)
+    )
     
     results = []
     
-    # --------------------------------------
-    # 3. עיבוד שורות
-    # --------------------------------------
     for _, row in df.iterrows():
-        original_desc = str(row[col_desc])
+        original_desc = str(row['ΠΕΡΙΓΡΑΦΗ'])
         desc = original_desc.upper()
-        amt = float(row['_clean_amount'])
+        amt = float(row['ΠΟΣΟ'])
         amount = abs(amt)
         is_income = amt > 0
         
-        # זיהוי Plot (אותה לוגיקה כמו Ilisia NBG)
+        # זיהוי Plot (אותה לוגיקה כמו Ilisia)
         plots = find_all_plots(desc)
         if len(plots) == 1:
             plot_val = plots[0]
@@ -1791,9 +1753,9 @@ def process_ilisia_euro_file(df):
         else:
             plot_val = "G1 - Manolis"  # Default for Ilisia
         
-        # יצירת רשומה בפורמט Ilisia NBG
+        # יצירת רשומה בפורמט Ilisia NBG (לא Diakofti!)
         entry = {
-            "Date": row[col_date].strftime('%d/%m/%Y') if pd.notnull(row[col_date]) else '',
+            "Date": row['ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ'] if 'ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ' in row else row.get('ΗΜ/ΝΙΑ ΑΞΙΑΣ', ''),
             "Income/outcome": "Income" if is_income else "Outcome",
             "Plot": plot_val,
             "Expenses Type": "Soft Cost",
@@ -1807,9 +1769,19 @@ def process_ilisia_euro_file(df):
             "Progressive Ledger Balance": "",
             "Payment details": "",
             "Original Description": original_desc,
-            "Year": row[col_date].year if pd.notnull(row[col_date]) else "",
+            "Year": "",  # נוסיף אחר כך אם יש תאריך
             "Bank": "Eurobank"
         }
+        
+        # ניסיון לחלץ שנה מהתאריך
+        try:
+            date_str = str(entry["Date"])
+            if '/' in date_str:
+                parts = date_str.split('/')
+                if len(parts) == 3:
+                    entry["Year"] = parts[2]  # dd/mm/YYYY
+        except:
+            pass
         
         filled = False
         
@@ -2374,7 +2346,7 @@ with tab1:
         - **Diakofti Euro**: Plot-based transactions
         - **Athens NBG**: Office expenses
         - **Ilisia NBG**: Ilisia project from NBG
-        - **Ilisia Euro**: New Ilisia Euro account
+        - **Ilisia Euro**: Ilisia Eurobank account
         
         **Supported Files:**
         - Excel (.xlsx, .xls)
@@ -2399,7 +2371,8 @@ with tab1:
                     # READ FILE (Excel / CSV)
                     # ----------------------------
                     if uploaded_file.name.lower().endswith('.csv'):
-                        if format_type == "Diakofti Euro":
+                        # קריאת CSV עם encoding נכון לפי הפורמט
+                        if format_type in ["Diakofti Euro", "Ilisia Euro"]:
                             df = pd.read_csv(uploaded_file, encoding="ISO-8859-7")
                         else:
                             try:
@@ -2421,9 +2394,11 @@ with tab1:
                     elif format_type == "Ilisia NBG":
                         result_df = process_ilisia_file(df)
 
-                    elif format_type == "Ilisia Euro":   # ⭐ הפונקציה החדשה
+                    elif format_type == "Ilisia Euro":
                         result_df = process_ilisia_euro_file(df)
                     
+                    else:
+                        raise ValueError(f"Unknown format type: {format_type}")
                     
                     # ----------------------------
                     # METRICS
@@ -2467,17 +2442,25 @@ with tab1:
                     result_df.to_excel(output, index=False, engine='openpyxl')
                     output.seek(0)
                     
+                    # שם קובץ נקי (להחליף רווחים ב-underscore)
+                    clean_format_name = format_type.lower().replace(' ', '_')
+                    timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+                    
                     st.download_button(
                         label="📥 Download Processed File",
                         data=output,
-                        file_name=f"{format_type.lower()}_processed_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                        file_name=f"{clean_format_name}_processed_{timestamp}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         use_container_width=True
                     )
                 
                 except Exception as e:
                     st.error(f"❌ Error processing file: {str(e)}")
-
+                    st.error(f"🔍 Error type: {type(e).__name__}")
+                    # הצגת traceback מפורט לדיבוג
+                    import traceback
+                    with st.expander("🔧 Technical Details (for debugging)"):
+                        st.code(traceback.format_exc())
 # ============================================
 # TAB 2: PAYMENT INSTRUCTIONS
 # ============================================
