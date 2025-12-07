@@ -1115,7 +1115,8 @@ def process_ilisia_file(df):
 
     col_date   = pick('ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ', 'Ημερομηνία', 'Valeur')
     col_desc   = pick('ΠΕΡΙΓΡΑΦΗ', 'Περιγραφή')
-    col_amount = pick('ΠΟΣΟ', 'Ποσό συναλλαγής')
+    col_amount = pick('ΠΟΣΟ', 'Ποσό εντολής', 'Ποσό συναλλαγής')
+
 
     if col_desc is None or col_amount is None:
         raise ValueError("Ilisia: description or amount column missing")
