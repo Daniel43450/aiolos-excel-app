@@ -1715,89 +1715,104 @@ def process_ilisia_file(df):
 # Ilisia EURO PROCESSING FUNCTION
 # ============================================
 def process_ilisia_euro_file(df):
-    """Process Ilisia EURO files exactly like Diakofti, but with Ilisia rules"""
-
+    """
+    Process Ilisia EURO files
+    INPUT: Athens format (Ημερομηνία, Περιγραφή, Ποσό συναלλαγής/Ποσό εντολής)
+    OUTPUT: Ilisia NBG format with all rules
+    """
+    df = df.copy()
+    
     # --------------------------------------
-    # 1. Normalize column names
+    # 1. נרמול שמות עמודות (Athens format)
     # --------------------------------------
     df.columns = [c.strip() for c in df.columns]
-
-    # Try to detect main columns
-    col_desc = next((c for c in df.columns if "ΠΕΡΙ" in c or "Περι" in c), None)
-    col_amount = next((c for c in df.columns if "ΠΟΣΟ" in c or "Ποσ" in c), None)
-    col_date = next((c for c in df.columns if "ΗΜ" in c), None)
-
+    
+    # זיהוי עמודות - Athens format
+    col_date = None
+    col_desc = None
+    col_amount = None
+    
+    for c in df.columns:
+        if 'ΗΜ' in c or 'Ημερομηνία' in c:
+            col_date = c
+        elif 'ΠΕΡΙ' in c or 'Περιγραφή' in c:
+            col_desc = c
+        elif 'Ποσό συναλλαγής' in c:
+            col_amount = c
+        elif 'Ποσό εντολής' in c and not col_amount:  # fallback
+            col_amount = c
+    
     if not col_desc or not col_amount:
-        raise ValueError("Ilisia Euro: Missing ΠΕΡΙΓΡΑΦΗ or ΠΟΣΟ columns")
-
+        raise ValueError("Ilisia Euro: Missing Περιγραφή or Ποσό columns")
+    
     # --------------------------------------
-    # 2. Standardize columns
+    # 2. ניקוי וסטנדרטיזציה
     # --------------------------------------
-    df = df.rename(columns={
-        col_desc: "ΠΕΡΙΓΡΑΦΗ",
-        col_amount: "ΠΟΣΟ",
-        col_date: "ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"
-    })
-
-    # --------------------------------------
-    # 3. Clean amounts
-    # --------------------------------------
-    df["ΠΟΣΟ"] = (
-        df["ΠΟΣΟ"]
-        .astype(str)
-        .str.replace(".", "")
-        .str.replace(",", ".")
-        .str.replace(r"[^\d\.\-]", "", regex=True)
-    )
-    df["ΠΟΣΟ"] = pd.to_numeric(df["ΠΟΣΟ"], errors="coerce").fillna(0.0)
-
-    # --------------------------------------
-    # 4. Clean date
-    # --------------------------------------
-    if "ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ" in df.columns:
-        df["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"] = pd.to_datetime(
-            df["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"], 
-            errors="coerce", 
-            dayfirst=True
-        )
+    # תאריך
+    if col_date:
+        df[col_date] = pd.to_datetime(df[col_date], dayfirst=True, errors='coerce')
     else:
-        df["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"] = ""
-
-    # Remove blank lines
-    df = df.dropna(subset=["ΠΕΡΙΓΡΑΦΗ"])
-
+        df[col_date] = pd.NaT
+    
+    # סכום - ניקוי מנקודות ופסיקים
+    if pd.api.types.is_numeric_dtype(df[col_amount]):
+        df['_clean_amount'] = df[col_amount].astype(float)
+    else:
+        df['_clean_amount'] = (
+            df[col_amount].astype(str)
+            .str.replace('.', '', regex=False)  # הסרת נקודות (thousands)
+            .str.replace(',', '.', regex=False)  # המרת פסיק לנקודה עשרונית
+            .str.replace(r'[^\d\.\-]', '', regex=True)
+            .replace({'': '0', '-': '0'})
+            .astype(float)
+        )
+    
+    # הסרת שורות ריקות
+    df = df.dropna(subset=[col_desc])
+    
     results = []
-
+    
     # --------------------------------------
-    # 5. Loop rows and apply rules
+    # 3. עיבוד שורות
     # --------------------------------------
     for _, row in df.iterrows():
-        original_desc = str(row["ΠΕΡΙΓΡΑΦΗ"])
+        original_desc = str(row[col_desc])
         desc = original_desc.upper()
-
-        amt = float(row["ΠΟΣΟ"])
-        is_income = amt > 0
+        amt = float(row['_clean_amount'])
         amount = abs(amt)
-
-        # Default
+        is_income = amt > 0
+        
+        # זיהוי Plot (אותה לוגיקה כמו Ilisia NBG)
+        plots = find_all_plots(desc)
+        if len(plots) == 1:
+            plot_val = plots[0]
+        elif len(plots) > 1:
+            plot_val = "Multiple"
+        else:
+            plot_val = "G1 - Manolis"  # Default for Ilisia
+        
+        # יצירת רשומה בפורמט Ilisia NBG
         entry = {
-            "Date": row["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"].strftime("%d/%m/%Y") if pd.notnull(row["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"]) else "",
+            "Date": row[col_date].strftime('%d/%m/%Y') if pd.notnull(row[col_date]) else '',
             "Income/outcome": "Income" if is_income else "Outcome",
-            "Plot": "G1 - Manolis",
+            "Plot": plot_val,
             "Expenses Type": "Soft Cost",
             "Type": "",
             "Supplier": "",
             "Description": desc,
             "In": amount if is_income else "",
             "Out": -amount if not is_income else "",
+            "Vat": "",
             "Total": amount if is_income else -amount,
             "Progressive Ledger Balance": "",
             "Payment details": "",
             "Original Description": original_desc,
+            "Year": row[col_date].year if pd.notnull(row[col_date]) else "",
             "Bank": "Eurobank"
         }
-
+        
         filled = False
+        
         # ============================================
         # 🔴 Ilisia EURO RULES - כמו החוקים הקודמים
         # (מותר להעתיק מפונקציית Ilisia NBG אחד לאחד)
