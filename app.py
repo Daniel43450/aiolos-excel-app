@@ -1715,108 +1715,89 @@ def process_ilisia_file(df):
 # Ilisia EURO PROCESSING FUNCTION
 # ============================================
 def process_ilisia_euro_file(df):
-    """Process Ilisia EURO NBG files and output same structure as Ilisia NBG"""
-    df = df.copy()
+    """Process Ilisia EURO files exactly like Diakofti, but with Ilisia rules"""
 
-    # ----- helper: choose first existing column from a list -----
-    def pick(*names):
-        for n in names:
-            if n in df.columns:
-                return n
-        return None
+    # --------------------------------------
+    # 1. Normalize column names
+    # --------------------------------------
+    df.columns = [c.strip() for c in df.columns]
 
-    # עמודות מהקובץ של Ilisia Euro
-    col_date    = pick("ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ", "ΗΜ/ΝΙΑ ΑΞΙΑΣ", "Ημερομηνία", "Valeur")
-    col_desc    = pick("ΠΕΡΙΓΡΑΦΗ", "Περιγραφή", "Περιγραφή συναλλαγής")
-    col_amount  = pick("ΠΟΣΟ", "Ποσό εντολής", "Ποσό συναλλαγής", "ΠΟΣΟ ΣΥΝΑΛΛΑΓΗΣ")
-    col_balance = pick("ΥΠΟΛΟΙΠΟ", "Λογιστικό Υπόλοιπο")
+    # Try to detect main columns
+    col_desc = next((c for c in df.columns if "ΠΕΡΙ" in c or "Περι" in c), None)
+    col_amount = next((c for c in df.columns if "ΠΟΣΟ" in c or "Ποσ" in c), None)
+    col_date = next((c for c in df.columns if "ΗΜ" in c), None)
 
-    if col_desc is None or col_amount is None:
-        raise ValueError("Ilisia EURO: description or amount column missing")
+    if not col_desc or not col_amount:
+        raise ValueError("Ilisia Euro: Missing ΠΕΡΙΓΡΑΦΗ or ΠΟΣΟ columns")
 
-    # ----- Description -> ΠΕΡΙΓΡΑΦΗ -----
-    if col_desc != "ΠΕΡΙΓΡΑΦΗ":
-        df["ΠΕΡΙΓΡΑΦΗ"] = df[col_desc]
+    # --------------------------------------
+    # 2. Standardize columns
+    # --------------------------------------
+    df = df.rename(columns={
+        col_desc: "ΠΕΡΙΓΡΑΦΗ",
+        col_amount: "ΠΟΣΟ",
+        col_date: "ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"
+    })
 
-    # ----- Date -> ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ -----
-    if col_date:
-        df[col_date] = pd.to_datetime(df[col_date], dayfirst=True, errors="coerce")
-        if col_date != "ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ":
-            df["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"] = df[col_date]
-    else:
-        df["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"] = pd.NaT
-
-    # ----- Amount -> ΠΟΣΟ (float חתום, עם פלוס/מינוס) -----
-    raw_amt = df[col_amount].astype(str).str.strip()
-    cleaned_amt = (
-        raw_amt
-        .str.replace(".", "", regex=False)      # נקודה אלפים
-        .str.replace(",", ".", regex=False)     # פסיק עשרוני
+    # --------------------------------------
+    # 3. Clean amounts
+    # --------------------------------------
+    df["ΠΟΣΟ"] = (
+        df["ΠΟΣΟ"]
+        .astype(str)
+        .str.replace(".", "")
+        .str.replace(",", ".")
         .str.replace(r"[^\d\.\-]", "", regex=True)
-        .replace({"": "0", "-": "0"})
     )
-    df["ΠΟΣΟ"] = cleaned_amt.astype(float)
+    df["ΠΟΣΟ"] = pd.to_numeric(df["ΠΟΣΟ"], errors="coerce").fillna(0.0)
 
-    # ----- Balance (אם קיים) -> _balance -----
-    if col_balance:
-        raw_bal = df[col_balance].astype(str).str.strip()
-        cleaned_bal = (
-            raw_bal
-            .str.replace(".", "", regex=False)
-            .str.replace(",", ".", regex=False)
-            .str.replace(r"[^\d\.\-]", "", regex=True)
-            .replace({"": "0", "-": "0"})
+    # --------------------------------------
+    # 4. Clean date
+    # --------------------------------------
+    if "ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ" in df.columns:
+        df["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"] = pd.to_datetime(
+            df["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"], 
+            errors="coerce", 
+            dayfirst=True
         )
-        df["_balance"] = cleaned_bal.astype(float)
     else:
-        df["_balance"] = ""
+        df["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"] = ""
 
-    # מסירים שורות בלי תיאור
+    # Remove blank lines
     df = df.dropna(subset=["ΠΕΡΙΓΡΑΦΗ"])
 
-    # אם יש לך כבר פונקציה כזו בקוד, פשוט הסר את ההגדרה כאן
-    def find_all_plots(desc: str):
-        return []
-
     results = []
+
+    # --------------------------------------
+    # 5. Loop rows and apply rules
+    # --------------------------------------
     for _, row in df.iterrows():
         original_desc = str(row["ΠΕΡΙΓΡΑΦΗ"])
         desc = original_desc.upper()
-        amt = float(row["ΠΟΣΟ"])      # סכום חתום
+
+        amt = float(row["ΠΟΣΟ"])
+        is_income = amt > 0
         amount = abs(amt)
 
-        # plot detect (כמו בקוד המקורי שלך)
-        plots = find_all_plots(desc)
-        if len(plots) == 1:
-            plot_val = plots[0]
-        elif len(plots) > 1:
-            plot_val = "Multiple"
-        else:
-            plot_val = "G1 - Manolis"
-
-        is_income = amt > 0
-
+        # Default
         entry = {
             "Date": row["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"].strftime("%d/%m/%Y") if pd.notnull(row["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"]) else "",
             "Income/outcome": "Income" if is_income else "Outcome",
-            "Plot": plot_val,
+            "Plot": "G1 - Manolis",
             "Expenses Type": "Soft Cost",
             "Type": "",
             "Supplier": "",
             "Description": desc,
             "In": amount if is_income else "",
             "Out": -amount if not is_income else "",
-            "Vat": "",
             "Total": amount if is_income else -amount,
-            "Progressive Ledger Balance": row["_balance"],
+            "Progressive Ledger Balance": "",
             "Payment details": "",
             "Original Description": original_desc,
-            "Year": row["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"].year if pd.notnull(row["ΗΜ/ΝΙΑ ΚΙΝΗΣΗΣ"]) else "",
-            "Bank": "EuroBank",   # אפשר לשנות ל-NBG אם אתה רוצה אחידות מלאה
+            "Bank": "Eurobank"
         }
 
         filled = False
-
         # ============================================
         # 🔴 Ilisia EURO RULES - כמו החוקים הקודמים
         # (מותר להעתיק מפונקציית Ilisia NBG אחד לאחד)
