@@ -8,17 +8,18 @@ import json
 import os
 from PIL import Image  
 
+
 st.markdown("""
 <style>
-/* Hide Streamlit top-right UI */
+/* Hide Streamlit toolbar */
+[data-testid="stToolbar"] {display: none !important;}
+[data-testid="stDecoration"] {display: none !important;}
 #MainMenu {visibility: hidden;}
 header {visibility: hidden;}
 footer {visibility: hidden;}
 
-/* Hide deploy / toolbar buttons (works on many Streamlit versions) */
-.stDeployButton {display: none !important;}
-[data-testid="stToolbar"] {display: none !important;}
-[data-testid="stDecoration"] {display: none !important;}
+/* Hide the bottom-right “App Creator” avatar/button */
+img[alt="App Creator Avatar"] {display: none !important;}
 </style>
 """, unsafe_allow_html=True)
 
